@@ -1,0 +1,25 @@
+# Dependencies
+node_modules/
+backend/venv/
+backend/.venv/
+venv/
+__pycache__/
+*.pyc
+
+# Builds & Outputs
+.next/
+out/
+build/
+dist/
+*.egg-info/
+
+# Databases & Cache
+iptap.db
+*.sqlite3
+.pytest_cache/
+.DS_Store
+
+# Environment & Local Secrets
+.env
+.env.local
+.env.production
