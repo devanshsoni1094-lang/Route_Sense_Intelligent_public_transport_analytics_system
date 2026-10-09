@@ -9,7 +9,7 @@ services:
       - "8000:8000"
     environment:
       - DATABASE_URL=postgresql://postgres:postgres@db:5432/iptap_db
-      - SECRET_KEY=iptap-prod-secret-key-2026-bmtc
+      - SECRET_KEY=routesense-prod-secret-key-2026-bmtc
       - DEMO_MODE=true
     depends_on:
       - db
@@ -17,8 +17,8 @@ services:
 
   frontend:
     build:
-      context: ./frontend
-      dockerfile: ../Dockerfile.frontend
+      context: .
+      dockerfile: Dockerfile.frontend
     ports:
       - "3000:3000"
     environment:
