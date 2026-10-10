@@ -1,82 +1,95 @@
-# Intelligent Public Transport Analytics Platform (IPTAP)
+# Route Sense — Intelligent Public Transport Analytics & Journey Intelligence Platform
 
-**Product Tagline:** *From Transport Data to Intelligent Decisions.*
+**Product Tagline:** *Find the best way to get there across India.*
 
-IPTAP is an operational decision-support platform designed for public transport authorities, municipal transport departments, and bus operators in India (pilot implemented for **Bengaluru Metropolitan Transport Corporation - BMTC**).
+Route Sense is an India-wide intelligent journey planning, real-time fare intelligence, and travel comparison platform. It enables commuters and travelers to search between any starting point and destination in India, comparing real-world travel options across public transit (Local Trains, Metro, City Buses, Express Rail) and road transport (Cabs, Auto-rickshaws, Bike Taxis, Personal Vehicles).
 
 ---
 
-## 🚀 Key Features & Application Modules
+## 🚀 Key Platform Features
 
-1. **Executive Intelligence Dashboard**: Real data-derived KPIs (On-Time Performance, Trip Completion Rate, Mean Delay, Passenger Boardings, Fleet Utilization, Active Disruptions, Forecasted Demand) with evidence-backed operational insights.
-2. **Live Operations Command Centre**: Near-real-time vehicle locations on interactive Leaflet maps with status filters (ON_TIME, DELAYED, STALE) and schedule-vs-actual telemetry table.
-3. **Route Performance Analytics**: Detailed corridor OTP, mean/median delay percentiles (p90), headway regularity index, and weekday vs weekend travel variation.
-4. **Passenger Demand Analytics**: Hourly passenger boarding patterns, peak morning/evening demand windows, and stop-level ridership distribution.
-5. **Predictions & ML Forecasting (MLOps)**: Real Scikit-Learn models (`RandomForestRegressor` and `Ridge`) for 24-hour passenger demand and delay forecasting with quantitative accuracy metrics (MAE, RMSE, WAPE).
-6. **Service Reliability & Anomaly Detection**: Automated detection of missing feeds, service gaps, delay spikes, travel time anomalies, and interactive status workflow (NEW → ACKNOWLEDGED → ASSIGNED → RESOLVED).
-7. **Route & Service Optimization Recommendations**: Evidence-backed operational improvement cards with human-in-the-loop review workflow (APPROVE / REJECT).
-8. **Interactive Geographic Intelligence (GIS)**: Spatial layers, GeoJSON route geometries, stop markers, and corridor heatmaps.
-9. **Data Ingestion & Data Quality Centre**: Transactional GTFS Schedule ZIP parser, CSV passenger boardings upload & preview tool, and ingestion job error logs.
-10. **Reports & Exports**: Downloadable CSV data tables and professionally formatted PDF operational reports (using ReportLab).
-11. **User, Role & Administration Management**: JWT authentication, Role-Based Access Control (Administrator, Operations Manager, Analyst, Executive Viewer), system audit logs, and demo dataset re-seeding.
+1. **Ultra-Simple Commuter Interface**:
+   - 2-input search form (Source & Destination) with location swapping.
+   - Fast, keyboard-navigable autocomplete with category icons (Stations, Localities, Airports, Landmarks).
+   - Instant search execution using current IST time.
+
+2. **Multi-Modal Transport Comparison**:
+   - **Suburban & Local Trains**: Mumbai Suburban, Chennai Suburban, Kolkata Suburban tariffs.
+   - **Intercity Express Rail**: IRCTC class-based fare formulas (2S, SL, 3A, 2A, 1A) with minimum fares, Tatkal, Superfast, and GST surcharges.
+   - **Metro Transit Systems**: DMRC (Delhi), Namma Metro (Bengaluru), Mumbai Metro, Hyderabad, Chennai, and Pune Metro fare structures.
+   - **Bus Transit**: State Transport Corporations (MSRTC, KSRTC, TSRTC, UPSRTC), City Buses (BMTC, BEST, DTC), and AC Volvo/Sleeper intercity options.
+   - **Ride-Hailing & Aggregators**: Rapido Bike, Ola Auto, Uber Go, Sedan, and SUV trip benchmarks with surge factors.
+   - **Personal Vehicles**: Distance, vehicle efficiency (km/l), and live fuel pricing (₹/l) running cost models.
+
+3. **Data Freshness & Transparency**:
+   - Clear classification tags for pricing sources:
+     - `LIVE_PROVIDER_QUOTE`
+     - `OFFICIAL_TARIFF`
+     - `API_TRANSIT_FARE`
+     - `ESTIMATED_OPERATING_COST`
+     - `ESTIMATED_FARE`
+   - Real-time timestamp tracking and data freshness badges (`LIVE`, `VERIFIED_TARIFF`, `STALE`).
+
+4. **Interactive Journey Details**:
+   - Step-by-step leg breakdown with walking duration, waiting time, and in-vehicle time.
+   - Complete route geometry visualization powered by Leaflet maps.
 
 ---
 
 ## 🛠️ Technology Stack
 
-- **Frontend**: Next.js 14 (TypeScript), Tailwind CSS, Lucide Icons, Recharts, Leaflet / React-Leaflet maps.
-- **Backend**: Python 3.13, FastAPI, Pydantic v2, SQLAlchemy 2.0, Scikit-Learn, Pandas, NumPy, ReportLab.
-- **Database**: PostgreSQL with PostGIS extension (with SQLite fallback for local development).
-- **Deployment**: Docker, Docker Compose.
+- **Frontend**: Next.js 14 (App Router, TypeScript), Tailwind CSS, Lucide React, Leaflet & React-Leaflet.
+- **Backend API**: Python 3.13, FastAPI, SQLAlchemy 2.0, Scikit-Learn, Pandas, Pytest.
+- **Geospatial & Autocomplete**: Google Places API (India-bound) with robust fallback database covering all 28 States & 8 UTs.
+- **Deployment Target**: Vercel production deployment compatible with serverless Edge/Node runtimes.
 
 ---
 
 ## 🏃 Quick Start (Local Development)
 
-### 1. Backend Setup (FastAPI)
+### 1. Frontend Development
 
 ```bash
+# Install dependencies
+npm install
+
+# Run development server
+npm run dev
+
+# Run production build check
+cmd /c npm run build
+```
+
+Frontend application will run at `http://localhost:3000`.
+
+### 2. Backend API Development & Testing
+
+```bash
+# Activate virtual environment
 cd backend
 python -m venv venv
-# On Windows:
 venv\Scripts\activate
-# On Linux/macOS:
-source venv/bin/activate
 
+# Install dependencies and run tests
 pip install -r requirements.txt
-python -m pytest tests
-python -m uvicorn app.main:app --reload --port 8000
-```
-Backend API will be running at `http://localhost:8000`. OpenAPI documentation available at `http://localhost:8000/docs`.
-
-### 2. Frontend Setup (Next.js)
-
-```bash
-cd frontend
-npm install
-npm run dev
-```
-Frontend dashboard will be running at `http://localhost:3000`.
-
-### 3. Docker Compose (Single-Command Launch)
-
-```bash
-docker-compose up --build
+cmd /c pytest
 ```
 
 ---
 
-## 📄 Handover Documentation
+## 📄 Complete Handover Documentation
 
-Full technical documentation is located in the `docs/` folder:
-- [PROJECT_SCOPE.md](docs/PROJECT_SCOPE.md)
-- [ARCHITECTURE.md](docs/ARCHITECTURE.md)
-- [DATA_DICTIONARY.md](docs/DATA_DICTIONARY.md)
-- [METRICS_AND_METHODOLOGY.md](docs/METRICS_AND_METHODOLOGY.md)
-- [DATA_INTEGRATION.md](docs/DATA_INTEGRATION.md)
-- [ML_METHODOLOGY.md](docs/ML_METHODOLOGY.md)
-- [SECURITY_AND_PRIVACY.md](docs/SECURITY_AND_PRIVACY.md)
-- [DEPLOYMENT.md](docs/DEPLOYMENT.md)
-- [OPERATIONS_RUNBOOK.md](docs/OPERATIONS_RUNBOOK.md)
-- [TEST_REPORT.md](docs/TEST_REPORT.md)
-- [ACCEPTANCE_CHECKLIST.md](docs/ACCEPTANCE_CHECKLIST.md)
+System architecture and operational guides are documented in the `docs/` folder:
+
+- [ARCHITECTURE.md](docs/ARCHITECTURE.md) — Platform Architecture & Component Overview
+- [LOCATION_SEARCH.md](docs/LOCATION_SEARCH.md) — Geospatial Location Search & Autocomplete
+- [ROUTING_METHODOLOGY.md](docs/ROUTING_METHODOLOGY.md) — Multi-Modal Journey Routing & Step Resolution
+- [FARE_DATA_DICTIONARY.md](docs/FARE_DATA_DICTIONARY.md) — Standard Data Dictionary & Schemas
+- [FARE_REFERENCE_BENCHMARKS.md](docs/FARE_REFERENCE_BENCHMARKS.md) — Railway, Bus, Cab & Auto Benchmark Figures
+- [PRICING_METHODOLOGY.md](docs/PRICING_METHODOLOGY.md) — Tarif Calculations & Surge Rules
+- [PROVIDER_INTEGRATIONS.md](docs/PROVIDER_INTEGRATIONS.md) — Data Provider Adapters & API Specifications
+- [DATA_FRESHNESS.md](docs/DATA_FRESHNESS.md) — Cache Expiry, Telemetry & Data Freshness Classification
+- [SECURITY.md](docs/SECURITY.md) — Security Controls, Secrets & Privacy Measures
+- [ENVIRONMENT_CONFIGURATION.md](docs/ENVIRONMENT_CONFIGURATION.md) — Environment Variables & API Keys Guide
+- [TEST_REPORT.md](docs/TEST_REPORT.md) — Frontend Build & Backend Test Execution Summary
+- [DEPLOYMENT.md](docs/DEPLOYMENT.md) — Vercel Deployment Guide & Production Checklist

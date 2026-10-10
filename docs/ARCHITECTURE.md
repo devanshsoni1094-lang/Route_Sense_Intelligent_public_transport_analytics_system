@@ -1,38 +1,58 @@
-# SYSTEM ARCHITECTURE DOCUMENTATION
+# Architecture & System Design — Route Sense
 
-**Platform:** Intelligent Public Transport Analytics Platform (IPTAP)
+## Executive Summary
 
----
+Route Sense is an intelligent public transport journey planning and mobility comparison platform engineered specifically for the Indian market. The architecture is decoupled into a high-performance Next.js 14 frontend layer and a modular FastAPI / Python analytical core, designed for serverless execution on Vercel and containerized server deployments.
 
-## 1. Architectural Style: Modular Monolith
-
-IPTAP is designed as a modular monolith to maintain low operational overhead while ensuring clear separation of concerns across data ingestion, analytics computation, ML forecasting, security, and UI rendering.
-
-```
-+-----------------------------------------------------------------------------------+
-|                                IPTAP FRONTEND                                     |
-|  Next.js 14 App Router | Tailwind CSS | Recharts | Leaflet Maps | Client REST API  |
-+-----------------------------------------+-----------------------------------------+
-                                          | JSON REST API (JWT Authenticated)
-+-----------------------------------------v-----------------------------------------+
-|                                IPTAP BACKEND                                      |
-|  FastAPI Engine | Pydantic Schemas | SQLAlchemy ORM | Analytics & Scikit-Learn    |
-|  Central Metric Engine | GTFS Ingestion | Anomaly Detection | ML Forecasting      |
-+-----------------------------------------+-----------------------------------------+
-                                          | SQL Queries / Spatial Extensions
-+-----------------------------------------v-----------------------------------------+
-|                              PERSISTENCE & STORAGE                                |
-|  PostgreSQL / PostGIS (or SQLite/SpatiaLite fallback) | File Storage for Uploads   |
-+-----------------------------------------------------------------------------------+
+```mermaid
+flowchart TD
+    User["Commuter / User"] -->|HTTP / JSON| NextJS["Next.js App Router (Frontend + API Routes)"]
+    NextJS -->|Location Query| LocProvider["Location Resolver (Google Places + Transit DB)"]
+    NextJS -->|Pricing Request| PricingEngine["Multi-Modal Pricing & Routing Engine"]
+    PricingEngine -->|Suburban Rail Tariff| RailModule["Railway Tariff Engine"]
+    PricingEngine -->|Metro Fare Matrix| MetroModule["Metro Tariff Matrix"]
+    PricingEngine -->|City/State Bus Rates| BusModule["Bus Tariff Engine"]
+    PricingEngine -->|Aggregator Equations| CabModule["Ride-Hailing Pricing Engine"]
+    PricingEngine -->|Fuel & Efficiency| VehicleModule["Personal Vehicle Cost Calculator"]
+    NextJS -->|Python Microservices| FastAPI["FastAPI Analytics Core (Python 3.13)"]
 ```
 
 ---
 
-## 2. Component Layer Responsibilities
+## 1. System Layers
 
-- **`backend/app/core/metrics.py`**: Central metric definition layer enforcing single source of truth for On-Time Performance (OTP), Trip Completion Rate, Mean/Median Delay, Headway Regularity, and Fleet Utilization.
-- **`backend/app/services/gtfs_service.py`**: Transactional GTFS archive zip parser and validator.
-- **`backend/app/services/ml_service.py`**: Scikit-Learn machine learning forecasting pipeline (`RandomForestRegressor` for demand, `Ridge` for delay prediction).
-- **`backend/app/services/anomaly_service.py`**: Anomaly detection and service reliability manager with alert lifecycle state transitions.
-- **`backend/app/services/recommendation_service.py`**: Human-in-the-loop decision-support recommendation engine.
-- **`backend/app/services/report_service.py`**: Downloadable CSV tables and ReportLab PDF document generator.
+### 1.1 Presentation Layer (Frontend)
+- **Framework**: Next.js 14 (App Router, Server Components & Client Components).
+- **Styling**: Tailwind CSS for responsive light-theme interfaces.
+- **Iconography**: Lucide React.
+- **Mapping**: Leaflet / React-Leaflet for interactive corridor display.
+
+### 1.2 API Gateway & Orchestration Layer
+- **Location Autocomplete (`/api/v1/location/autocomplete`)**: Resolves user queries to verified geographic entities across India.
+- **Route Planner (`/api/v1/planner/route`)**: Orchestrates distance calculation, route generation, fare evaluation, and option sorting.
+
+### 1.3 Core Engines
+- **Geospatial Engine**: Computes circuity-adjusted road and rail distance matrices using Haversine formulas and routing provider responses.
+- **Pricing Engine (`src/lib/pricing/engine.ts`)**: Evaluates mode-specific pricing rules (Railway base slabs, Metro fare structures, Bus tariffs, Cab surge models, and Fuel running cost).
+
+---
+
+## 2. Data Flow Architecture
+
+1. **User Query Input**: Commuter inputs origin (`Dadar Railway Station`) and destination (`CSMT`).
+2. **Entity Resolution**: `resolveLocation()` searches Google Places API or fallback Indian Transit Database.
+3. **Distance & Corridor Resolution**: System calculates straight-line and circuity-adjusted route distance ($1.30\times$ road circuity factor).
+4. **Multi-Modal Fare Calculation**:
+   - Suburban Rail: $\text{Base} + \text{Slab Tariff}$.
+   - Metro Rail: Distance-band matrix tariff (₹10 - ₹60).
+   - Bus: City stage rate / State express rate per km.
+   - Aggregator Cab: $\text{Base Fare} + (\text{Distance} \times \text{Per KM Rate}) \times \text{Surge Factor}$.
+   - Personal Vehicle: $(\text{Distance} / \text{Efficiency}) \times \text{Fuel Price} + \text{Tolls}$.
+5. **Normalised Response**: Standardized JSON payload containing array of `NormalizedJourneyOption` objects with explicit freshness tags.
+
+---
+
+## 3. Deployment Topology
+
+- **Vercel**: Edge and Node.js serverless functions powering Next.js application routes.
+- **FastAPI / Python Service**: Renders analytics, PDF reports, and Scikit-Learn prediction models.
