@@ -243,30 +243,8 @@ export default function PlannerPage() {
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 font-sans pb-12">
-      {/* Simple Header */}
-      <header className="bg-white border-b border-slate-200 sticky top-0 z-40 shadow-sm">
-        <div className="max-w-4xl mx-auto px-4 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="p-2.5 bg-sky-600 text-white rounded-xl shadow">
-              <Navigation className="w-5 h-5" />
-            </div>
-            <div>
-              <h1 className="text-xl font-black text-slate-900 tracking-tight">
-                ROUTE SENSE PLANNER
-              </h1>
-              <p className="text-xs text-slate-500 font-medium">Find the best way to get there across India</p>
-            </div>
-          </div>
-
-          <span className="hidden sm:inline-flex items-center gap-1.5 text-xs font-semibold bg-emerald-50 text-emerald-700 px-3 py-1 rounded-full border border-emerald-200">
-            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-            Live Data Operational
-          </span>
-        </div>
-      </header>
-
       {/* Main Container */}
-      <main className="max-w-4xl mx-auto px-4 mt-8 space-y-8">
+      <div className="max-w-4xl mx-auto px-4 py-8 space-y-8">
         {/* Main Search Card - STRICT 2 INPUTS + 1 BUTTON */}
         <div className="bg-white border border-slate-200 rounded-3xl p-6 sm:p-8 shadow-sm space-y-6">
           <div className="border-b border-slate-100 pb-3">
@@ -537,7 +515,7 @@ export default function PlannerPage() {
             </div>
           </div>
         )}
-      </main>
+      </div>
     </div>
   );
 }

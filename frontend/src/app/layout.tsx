@@ -1,11 +1,10 @@
 import React from "react";
 import "./globals.css";
 import { Header } from "@/components/common/Header";
-import { Sidebar } from "@/components/common/Sidebar";
 
 export const metadata = {
-  title: "RouteSense — Intelligent Public Transport Analytics Platform",
-  description: "From Transport Data to Intelligent Decisions.",
+  title: "Route Sense — India Public Transport Journey Planner",
+  description: "Find the best public transport journeys across India with real-world distance, duration, and pricing.",
 };
 
 export default function RootLayout({
@@ -15,14 +14,17 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body className="bg-slate-950 text-slate-100 min-h-screen flex flex-col font-sans antialiased">
+      <body className="bg-slate-50 text-slate-900 min-h-screen flex flex-col font-sans antialiased">
         <Header />
-        <div className="flex flex-1 overflow-hidden">
-          <Sidebar />
-          <main className="flex-1 bg-slate-950 p-6 overflow-y-auto max-h-[calc(100vh-4rem)]">
-            {children}
-          </main>
-        </div>
+        <main className="flex-1 w-full bg-slate-50">
+          {children}
+        </main>
+        <footer className="bg-white border-t border-slate-200 py-6 text-center text-xs text-slate-500">
+          <div className="max-w-6xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-2">
+            <p className="font-semibold text-slate-700">Route Sense — Intelligent Public Transport Analytics System</p>
+            <p className="text-slate-400">Coverage across all 28 States & 8 Union Territories in India</p>
+          </div>
+        </footer>
       </body>
     </html>
   );
