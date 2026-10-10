@@ -112,14 +112,13 @@ export default function SuperSimpleUserPage() {
   const [routeOptions, setRouteOptions] = useState<MultiModalOption[]>(DEFAULT_OPTIONS);
   const [selectedMode, setSelectedMode] = useState<"BUS" | "TRAIN" | "CAB" | "BIKE">("BUS");
 
-  const handleSearch = async (e?: React.FormEvent) => {
-    if (e) e.preventDefault();
-    if (!origin.trim() || !destination.trim()) return;
+  const handleSearchWithParams = async (origStr: string, destStr: string) => {
+    if (!origStr.trim() || !destStr.trim()) return;
 
     setLoading(true);
     try {
       const res = await fetchApi<{ route_options: MultiModalOption[] }>(
-        `/planner/route?origin=${encodeURIComponent(origin)}&destination=${encodeURIComponent(destination)}`
+        `/planner/route?origin=${encodeURIComponent(origStr)}&destination=${encodeURIComponent(destStr)}`
       );
       if (res && res.route_options && res.route_options.length > 0) {
         setRouteOptions(res.route_options);
@@ -131,10 +130,20 @@ export default function SuperSimpleUserPage() {
     }
   };
 
+  const handleSearch = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    await handleSearchWithParams(origin, destination);
+  };
+
+  React.useEffect(() => {
+    handleSearchWithParams("Central Silk Board", "Hebbal Bus Station");
+  }, []);
+
   const handleSwap = () => {
     const temp = origin;
     setOrigin(destination);
     setDestination(temp);
+    handleSearchWithParams(destination, temp);
   };
 
   const selectedOption = routeOptions.find((opt) => opt.mode === selectedMode) || routeOptions[0];
@@ -241,6 +250,7 @@ export default function SuperSimpleUserPage() {
                     onClick={() => {
                       setOrigin(p.origin);
                       setDestination(p.destination);
+                      handleSearchWithParams(p.origin, p.destination);
                     }}
                     className="text-xs bg-slate-950 hover:bg-slate-800 text-sky-300 border border-slate-800 rounded-lg px-3 py-1.5 transition-colors font-medium"
                   >

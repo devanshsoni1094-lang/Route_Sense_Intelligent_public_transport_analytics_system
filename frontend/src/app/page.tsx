@@ -33,7 +33,7 @@ const POPULAR_ROUTES = [
 const DEFAULT_OPTIONS: MultiModalOption[] = [
   {
     mode: "BUS",
-    title: "BMTC Express Bus (Route 500-A)",
+    title: "BMTC Express Bus",
     duration_min: 48,
     estimated_delay_min: 14,
     fare_inr: 35,
@@ -41,17 +41,17 @@ const DEFAULT_OPTIONS: MultiModalOption[] = [
     co2_emissions_g: 450,
     reliability_score_pct: 85,
     occupancy_level: "MODERATE",
-    next_departure: "Leaves in 6 mins",
+    next_departure: "Leaves in 5 mins",
     recommended: true,
     steps: [
-      { step_number: 1, instruction: "Walk to Central Silk Board Bus Stand", mode: "WALK", detail: "2 mins walk (200m)", duration_min: 2, distance_km: 0.2 },
-      { step_number: 2, instruction: "Board Bus 500-A towards Hebbal", mode: "BUS", detail: "Passes HSR, Bellandur, Marathahalli & KR Puram", duration_min: 44, distance_km: 27.8 },
-      { step_number: 3, instruction: "Alight at Hebbal Bus Stop", mode: "WALK", detail: "2 mins walk to destination", duration_min: 2, distance_km: 0.5 }
+      { step_number: 1, instruction: "Walk to Bus Stand", mode: "WALK", detail: "2 mins walk (200m)", duration_min: 2, distance_km: 0.2 },
+      { step_number: 2, instruction: "Board BMTC Bus towards destination", mode: "BUS", detail: "Direct transit corridor", duration_min: 44, distance_km: 27.8 },
+      { step_number: 3, instruction: "Alight at Destination Stop", mode: "WALK", detail: "2 mins walk to destination", duration_min: 2, distance_km: 0.5 }
     ]
   },
   {
     mode: "TRAIN",
-    title: "Namma Metro + Train Shuttle",
+    title: "Namma Metro / Rail Line",
     duration_min: 42,
     estimated_delay_min: 2,
     fare_inr: 45,
@@ -59,17 +59,17 @@ const DEFAULT_OPTIONS: MultiModalOption[] = [
     co2_emissions_g: 220,
     reliability_score_pct: 95,
     occupancy_level: "MODERATE",
-    next_departure: "Leaves in 4 mins",
+    next_departure: "Leaves in 3 mins",
     recommended: false,
     steps: [
-      { step_number: 1, instruction: "Take Metro Yellow Line from Silk Board", mode: "TRAIN", detail: "12 mins to RV Road", duration_min: 12, distance_km: 8.5 },
-      { step_number: 2, instruction: "Switch to Metro Green Line", mode: "TRAIN", detail: "16 mins to Majestic", duration_min: 16, distance_km: 11.2 },
-      { step_number: 3, instruction: "Take Train Shuttle to Hebbal Railway Station", mode: "TRAIN", detail: "Direct rail corridor", duration_min: 14, distance_km: 11.3 }
+      { step_number: 1, instruction: "Walk to Metro Station", mode: "TRAIN", detail: "3 mins connection time", duration_min: 3, distance_km: 0.3 },
+      { step_number: 2, instruction: "Board Rapid Metro Rail Line", mode: "TRAIN", detail: "Dedicated track line", duration_min: 36, distance_km: 30.3 },
+      { step_number: 3, instruction: "Exit Station & walk to destination", mode: "WALK", detail: "3 mins walk", duration_min: 3, distance_km: 0.4 }
     ]
   },
   {
     mode: "CAB",
-    title: "Taxi / Taxi Cab (Uber / Ola)",
+    title: "Taxi Cab (Uber / Ola)",
     duration_min: 52,
     estimated_delay_min: 18,
     fare_inr: 480,
@@ -80,14 +80,14 @@ const DEFAULT_OPTIONS: MultiModalOption[] = [
     next_departure: "Available Now (3 mins pickup)",
     recommended: false,
     steps: [
-      { step_number: 1, instruction: "Cab pickup at Silk Board Junction", mode: "CAB", detail: "AC Sedan driver arriving", duration_min: 3, distance_km: 0.1 },
-      { step_number: 2, instruction: "Drive via Outer Ring Road", mode: "CAB", detail: "Heavy morning traffic near Bellandur", duration_min: 46, distance_km: 28.6 },
-      { step_number: 3, instruction: "Drop-off at Hebbal Destination", mode: "CAB", detail: "Direct door-to-door arrival", duration_min: 3, distance_km: 0.5 }
+      { step_number: 1, instruction: "Cab pickup", mode: "CAB", detail: "AC Sedan driver arriving", duration_min: 3, distance_km: 0.1 },
+      { step_number: 2, instruction: "Drive via main road", mode: "CAB", detail: "Live traffic status", duration_min: 46, distance_km: 28.6 },
+      { step_number: 3, instruction: "Direct drop-off at destination", mode: "CAB", detail: "Door-to-door arrival", duration_min: 3, distance_km: 0.5 }
     ]
   },
   {
     mode: "BIKE",
-    title: "Bike Taxi (Rapido / Personal Bike)",
+    title: "Bike Taxi (Rapido)",
     duration_min: 36,
     estimated_delay_min: 5,
     fare_inr: 160,
@@ -98,9 +98,9 @@ const DEFAULT_OPTIONS: MultiModalOption[] = [
     next_departure: "Available Now (2 mins pickup)",
     recommended: false,
     steps: [
-      { step_number: 1, instruction: "Rider pickup at Silk Board Flyover", mode: "BIKE", detail: "Helmet provided", duration_min: 2, distance_km: 0.1 },
-      { step_number: 2, instruction: "Ride via Outer Ring Road Service Lane", mode: "BIKE", detail: "Avoids main traffic jams easily", duration_min: 32, distance_km: 27.4 },
-      { step_number: 3, instruction: "Drop-off at Hebbal Gate", mode: "BIKE", detail: "Fastest road option", duration_min: 2, distance_km: 0.5 }
+      { step_number: 1, instruction: "Captain pickup", mode: "BIKE", detail: "Helmet provided", duration_min: 2, distance_km: 0.1 },
+      { step_number: 2, instruction: "Ride via service lane", mode: "BIKE", detail: "Avoids traffic congestion", duration_min: 32, distance_km: 27.4 },
+      { step_number: 3, instruction: "Arrival at gate", mode: "BIKE", detail: "Fastest road option", duration_min: 2, distance_km: 0.5 }
     ]
   }
 ];
@@ -112,14 +112,13 @@ export default function SuperSimpleUserPage() {
   const [routeOptions, setRouteOptions] = useState<MultiModalOption[]>(DEFAULT_OPTIONS);
   const [selectedMode, setSelectedMode] = useState<"BUS" | "TRAIN" | "CAB" | "BIKE">("BUS");
 
-  const handleSearch = async (e?: React.FormEvent) => {
-    if (e) e.preventDefault();
-    if (!origin.trim() || !destination.trim()) return;
+  const handleSearchWithParams = async (origStr: string, destStr: string) => {
+    if (!origStr.trim() || !destStr.trim()) return;
 
     setLoading(true);
     try {
       const res = await fetchApi<{ route_options: MultiModalOption[] }>(
-        `/planner/route?origin=${encodeURIComponent(origin)}&destination=${encodeURIComponent(destination)}`
+        `/planner/route?origin=${encodeURIComponent(origStr)}&destination=${encodeURIComponent(destStr)}`
       );
       if (res && res.route_options && res.route_options.length > 0) {
         setRouteOptions(res.route_options);
@@ -131,10 +130,20 @@ export default function SuperSimpleUserPage() {
     }
   };
 
+  const handleSearch = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    await handleSearchWithParams(origin, destination);
+  };
+
+  React.useEffect(() => {
+    handleSearchWithParams("Central Silk Board", "Hebbal Bus Station");
+  }, []);
+
   const handleSwap = () => {
     const temp = origin;
     setOrigin(destination);
     setDestination(temp);
+    handleSearchWithParams(destination, temp);
   };
 
   const selectedOption = routeOptions.find((opt) => opt.mode === selectedMode) || routeOptions[0];
@@ -172,7 +181,7 @@ export default function SuperSimpleUserPage() {
             </div>
           </div>
           <span className="bg-emerald-950 text-emerald-400 border border-emerald-800 text-xs font-semibold px-3 py-1 rounded-full flex items-center gap-1.5">
-            <Zap className="w-3.5 h-3.5 fill-current" /> Live & Ready
+            <Zap className="w-3.5 h-3.5 fill-current" /> Live GTFS Telemetry
           </span>
         </header>
 
@@ -241,6 +250,7 @@ export default function SuperSimpleUserPage() {
                     onClick={() => {
                       setOrigin(p.origin);
                       setDestination(p.destination);
+                      handleSearchWithParams(p.origin, p.destination);
                     }}
                     className="text-xs bg-slate-950 hover:bg-slate-800 text-sky-300 border border-slate-800 rounded-lg px-3 py-1.5 transition-colors font-medium"
                   >
