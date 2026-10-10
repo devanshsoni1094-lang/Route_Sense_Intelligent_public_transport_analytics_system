@@ -10,7 +10,9 @@ import {
   Navigation,
   Loader2,
   X,
-  Crosshair
+  Crosshair,
+  CheckCircle2,
+  AlertCircle
 } from "lucide-react";
 import { ResolvedLocation, PlaceCategory } from "@/types";
 import { fetchApi } from "@/lib/api";
@@ -20,9 +22,10 @@ interface LocationAutocompleteProps {
   placeholder: string;
   value: string;
   selectedLocation: ResolvedLocation | null;
-  onSelectLocation: (loc: ResolvedLocation) => void;
+  onSelectLocation: (loc: ResolvedLocation | null) => void;
   onTextChange: (text: string) => void;
   accentColor?: "emerald" | "rose" | "sky";
+  errorMessage?: string;
 }
 
 export const LocationAutocomplete: React.FC<LocationAutocompleteProps> = ({
@@ -32,7 +35,8 @@ export const LocationAutocomplete: React.FC<LocationAutocompleteProps> = ({
   selectedLocation,
   onSelectLocation,
   onTextChange,
-  accentColor = "sky"
+  accentColor = "sky",
+  errorMessage
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -75,7 +79,7 @@ export const LocationAutocomplete: React.FC<LocationAutocompleteProps> = ({
         const res = await fetchApi<{ results: ResolvedLocation[] }>(
           `/location/autocomplete?q=${encodeURIComponent(queryText)}`
         );
-        if (res && res.results) {
+        if (res && res.results && res.results.length > 0) {
           setSuggestions(res.results);
         } else {
           setSuggestions([]);
@@ -86,12 +90,18 @@ export const LocationAutocomplete: React.FC<LocationAutocompleteProps> = ({
       } finally {
         setLoading(false);
       }
-    }, 250);
+    }, 200);
   };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const val = e.target.value;
     onTextChange(val);
+    
+    // Invalidate stale selection if text is modified
+    if (selectedLocation && val !== selectedLocation.displayName) {
+      onSelectLocation(null);
+    }
+    
     fetchSuggestions(val);
   };
 
@@ -165,7 +175,7 @@ export const LocationAutocomplete: React.FC<LocationAutocompleteProps> = ({
         }
       },
       (err) => {
-        console.warn("Geolocation permission denied or error", err);
+        console.warn("Geolocation permission error", err);
         setGeoLoading(false);
         alert("Unable to access current location. Please type your location manually.");
       }
@@ -173,44 +183,50 @@ export const LocationAutocomplete: React.FC<LocationAutocompleteProps> = ({
   };
 
   const getCategoryIcon = (placeTypes: PlaceCategory[]) => {
-    if (placeTypes.includes("railway_station")) return <Train className="w-4 h-4 text-sky-400" />;
-    if (placeTypes.includes("metro_station")) return <Train className="w-4 h-4 text-purple-400" />;
-    if (placeTypes.includes("bus_terminal")) return <Bus className="w-4 h-4 text-amber-400" />;
-    if (placeTypes.includes("airport")) return <Plane className="w-4 h-4 text-emerald-400" />;
-    if (placeTypes.includes("landmark")) return <Building className="w-4 h-4 text-rose-400" />;
-    return <MapPin className="w-4 h-4 text-slate-400" />;
+    if (placeTypes.includes("railway_station")) return <Train className="w-4 h-4 text-sky-600" />;
+    if (placeTypes.includes("metro_station")) return <Train className="w-4 h-4 text-purple-600" />;
+    if (placeTypes.includes("bus_terminal")) return <Bus className="w-4 h-4 text-amber-600" />;
+    if (placeTypes.includes("airport")) return <Plane className="w-4 h-4 text-emerald-600" />;
+    if (placeTypes.includes("landmark")) return <Building className="w-4 h-4 text-rose-600" />;
+    return <MapPin className="w-4 h-4 text-slate-500" />;
   };
 
   const iconColor =
     accentColor === "emerald"
-      ? "text-emerald-400"
+      ? "text-emerald-600"
       : accentColor === "rose"
-      ? "text-rose-400"
-      : "text-sky-400";
+      ? "text-rose-600"
+      : "text-sky-600";
+
+  const borderColor = errorMessage
+    ? "border-rose-400 focus:border-rose-500 ring-1 ring-rose-200"
+    : selectedLocation
+    ? "border-emerald-400 focus:border-emerald-500"
+    : "border-slate-300 focus:border-sky-500";
 
   return (
     <div ref={containerRef} className="relative w-full">
-      <div className="flex items-center justify-between mb-1">
-        <label className="block text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
+      <div className="flex items-center justify-between mb-1.5">
+        <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider">
           {label}
         </label>
         <button
           type="button"
           onClick={handleGeolocation}
           disabled={geoLoading}
-          className="text-[10px] text-sky-400 hover:text-sky-300 font-medium flex items-center gap-1 transition-colors"
+          className="text-xs text-sky-600 hover:text-sky-700 font-semibold flex items-center gap-1 transition-colors cursor-pointer"
         >
           {geoLoading ? (
-            <Loader2 className="w-3 h-3 animate-spin" />
+            <Loader2 className="w-3.5 h-3.5 animate-spin text-sky-600" />
           ) : (
-            <Crosshair className="w-3 h-3" />
+            <Crosshair className="w-3.5 h-3.5" />
           )}
           <span>Use My Location</span>
         </button>
       </div>
 
       <div className="relative">
-        <MapPin className={`w-5 h-5 ${iconColor} absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none`} />
+        <MapPin className={`w-5 h-5 ${iconColor} absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none`} />
 
         <input
           type="text"
@@ -219,29 +235,39 @@ export const LocationAutocomplete: React.FC<LocationAutocompleteProps> = ({
           onFocus={() => value.trim().length >= 2 && fetchSuggestions(value)}
           onKeyDown={handleKeyDown}
           placeholder={placeholder}
-          className="w-full bg-slate-950 border border-slate-700 focus:border-sky-500 rounded-xl pl-10 pr-9 py-3 text-sm text-white font-semibold placeholder-slate-500 focus:outline-none transition-colors"
+          className={`w-full bg-white border ${borderColor} rounded-xl pl-11 pr-9 py-3.5 text-sm text-slate-900 font-semibold placeholder-slate-400 focus:outline-none shadow-sm transition-all`}
         />
 
         {loading ? (
-          <Loader2 className="w-4 h-4 text-slate-400 animate-spin absolute right-3 top-1/2 -translate-y-1/2" />
+          <Loader2 className="w-4 h-4 text-slate-400 animate-spin absolute right-3.5 top-1/2 -translate-y-1/2" />
+        ) : selectedLocation ? (
+          <CheckCircle2 className="w-4 h-4 text-emerald-500 absolute right-3.5 top-1/2 -translate-y-1/2" />
         ) : value ? (
           <button
             type="button"
             onClick={() => {
               onTextChange("");
+              onSelectLocation(null);
               setSuggestions([]);
               setIsOpen(false);
             }}
-            className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white"
+            className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700 cursor-pointer"
           >
             <X className="w-4 h-4" />
           </button>
         ) : null}
       </div>
 
+      {errorMessage && (
+        <p className="mt-1 text-xs text-rose-600 font-medium flex items-center gap-1">
+          <AlertCircle className="w-3.5 h-3.5" />
+          {errorMessage}
+        </p>
+      )}
+
       {/* Autocomplete Dropdown List */}
       {isOpen && (
-        <div className="absolute z-50 left-0 right-0 mt-1 bg-slate-900 border border-slate-700 rounded-xl shadow-2xl overflow-hidden max-h-72 overflow-y-auto divide-y divide-slate-800/80">
+        <div className="absolute z-50 left-0 right-0 mt-1.5 bg-white border border-slate-200 rounded-xl shadow-xl overflow-hidden max-h-72 overflow-y-auto divide-y divide-slate-100">
           {suggestions.length > 0 ? (
             suggestions.map((loc, idx) => {
               const isHighlighted = idx === selectedIndex;
@@ -251,21 +277,21 @@ export const LocationAutocomplete: React.FC<LocationAutocompleteProps> = ({
                   onClick={() => handleSelect(loc)}
                   onMouseEnter={() => setSelectedIndex(idx)}
                   className={`p-3 cursor-pointer transition-colors flex items-start gap-3 ${
-                    isHighlighted ? "bg-slate-800 text-white" : "hover:bg-slate-800/50 text-slate-200"
+                    isHighlighted ? "bg-sky-50 text-slate-900" : "hover:bg-slate-50 text-slate-800"
                   }`}
                 >
                   <div className="mt-0.5 shrink-0">{getCategoryIcon(loc.placeTypes)}</div>
 
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between gap-2">
-                      <span className="text-xs font-bold text-white truncate">{loc.displayName}</span>
+                      <span className="text-xs font-bold text-slate-900 truncate">{loc.displayName}</span>
                       {loc.city && (
-                        <span className="text-[10px] font-mono bg-slate-950 text-slate-400 px-1.5 py-0.5 rounded border border-slate-800 shrink-0">
+                        <span className="text-[10px] font-semibold bg-slate-100 text-slate-600 px-2 py-0.5 rounded border border-slate-200 shrink-0">
                           {loc.city}
                         </span>
                       )}
                     </div>
-                    <p className="text-[11px] text-slate-400 truncate mt-0.5">
+                    <p className="text-[11px] text-slate-500 truncate mt-0.5">
                       {loc.secondaryAddress || loc.formattedAddress}
                     </p>
                   </div>
@@ -273,8 +299,8 @@ export const LocationAutocomplete: React.FC<LocationAutocompleteProps> = ({
               );
             })
           ) : !loading ? (
-            <div className="p-4 text-center text-xs text-slate-400">
-              No matching Indian locations found. Try searching by city, station name, or locality.
+            <div className="p-4 text-center text-xs text-slate-500">
+              No matching locations found. Search by city, station name, or locality.
             </div>
           ) : null}
         </div>
