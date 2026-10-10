@@ -14,11 +14,13 @@ import {
   Map,
   UploadCloud,
   FileSpreadsheet,
-  Settings
+  Settings,
+  Navigation
 } from "lucide-react";
 
 const navigationItems = [
   { name: "Overview", href: "/", icon: LayoutDashboard },
+  { name: "Route Planner", href: "/planner", icon: Navigation },
   { name: "Live Operations", href: "/live", icon: Radio },
   { name: "Route Analytics", href: "/routes", icon: GitCommit },
   { name: "Passenger Demand", href: "/demand", icon: Users },

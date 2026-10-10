@@ -117,3 +117,27 @@ export interface PredictionPoint {
   lower_bound: number;
   upper_bound: number;
 }
+
+export interface RouteStep {
+  step_number: number;
+  instruction: string;
+  mode: 'BUS' | 'TRAIN' | 'CAB' | 'BIKE' | 'WALK';
+  detail: string;
+  duration_min: number;
+  distance_km: number;
+}
+
+export interface MultiModalOption {
+  mode: 'BUS' | 'TRAIN' | 'CAB' | 'BIKE';
+  title: string;
+  duration_min: number;
+  estimated_delay_min: number;
+  fare_inr: number;
+  distance_km: number;
+  co2_emissions_g: number;
+  reliability_score_pct: number;
+  occupancy_level: 'LOW' | 'MODERATE' | 'HIGH';
+  next_departure: string;
+  recommended: boolean;
+  steps: RouteStep[];
+}
