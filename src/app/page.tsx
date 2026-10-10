@@ -132,7 +132,7 @@ export default function MasterRouteSenseIndiaPage() {
 
   const [loading, setLoading] = useState(false);
   const [routeOptions, setRouteOptions] = useState<MultiModalOption[]>([]);
-  const [selectedMode, setSelectedMode] = useState<"BUS" | "TRAIN" | "CAB" | "BIKE">("TRAIN");
+  const [selectedMode, setSelectedMode] = useState<string>("TRAIN");
 
   const [recentSearches, setRecentSearches] = useState<Array<{ from: string; to: string }>>([]);
 

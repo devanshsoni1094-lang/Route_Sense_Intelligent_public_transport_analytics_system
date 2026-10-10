@@ -121,24 +121,50 @@ export interface PredictionPoint {
 export interface RouteStep {
   step_number: number;
   instruction: string;
-  mode: 'BUS' | 'TRAIN' | 'CAB' | 'BIKE' | 'WALK';
+  mode: string;
   detail: string;
   duration_min: number;
   distance_km: number;
 }
 
 export interface MultiModalOption {
-  mode: 'BUS' | 'TRAIN' | 'CAB' | 'BIKE';
+  journey_id?: string;
+  mode: 'BUS' | 'TRAIN' | 'METRO' | 'CAB' | 'AUTO' | 'BIKE' | 'CAR_PERSONAL' | 'MOTORCYCLE_PERSONAL';
+  transport_mode?: string;
+  vehicle_category?: string;
+  operator?: string;
   title: string;
   duration_min: number;
+  total_duration_minutes?: number;
   estimated_delay_min: number;
   fare_inr: number;
+  quoted_price_inr?: number;
+  price_low_inr?: number;
+  price_high_inr?: number;
+  price_per_passenger_inr?: number;
   distance_km: number;
+  route_distance_km?: number;
   co2_emissions_g: number;
   reliability_score_pct: number;
-  occupancy_level: 'LOW' | 'MODERATE' | 'HIGH';
+  occupancy_level?: 'LOW' | 'MODERATE' | 'HIGH';
   next_departure: string;
+  departure_at?: string;
+  arrival_at?: string;
   recommended: boolean;
+  price_type?: string;
+  freshness_status?: string;
+  source_name?: string;
+  observed_at?: string;
+  assumptions?: string[];
+  fare_breakdown?: {
+    base_fare_inr: number;
+    distance_fare_inr: number;
+    time_or_surge_fare_inr: number;
+    tolls_inr: number;
+    fuel_or_energy_cost_inr: number;
+    total_fare_inr: number;
+    currency: string;
+  };
   steps: RouteStep[];
 }
 
