@@ -141,3 +141,30 @@ export interface MultiModalOption {
   recommended: boolean;
   steps: RouteStep[];
 }
+
+export type PlaceCategory = 'railway_station' | 'metro_station' | 'bus_terminal' | 'airport' | 'landmark' | 'locality' | 'address';
+
+export interface ResolvedLocation {
+  provider: 'google' | 'mappls' | 'nominatim' | 'indian_transit_db';
+  providerPlaceId: string;
+  displayName: string;
+  formattedAddress: string;
+  locality?: string;
+  city: string;
+  district?: string;
+  state: string;
+  countryCode: 'IN';
+  latitude: number;
+  longitude: number;
+  placeTypes: PlaceCategory[];
+  dataSource: string;
+  retrievedAt: string;
+  secondaryAddress?: string;
+}
+
+export interface AutocompleteResult {
+  query: string;
+  count: number;
+  results: ResolvedLocation[];
+  provider: string;
+}
