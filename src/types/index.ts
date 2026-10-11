@@ -165,6 +165,10 @@ export interface MultiModalOption {
     total_fare_inr: number;
     currency: string;
   };
+  coordinates?: [number, number][];
+  polyline?: string;
+  is_live_google_route?: boolean;
+  transit_fare_currency?: string;
   steps: RouteStep[];
 }
 

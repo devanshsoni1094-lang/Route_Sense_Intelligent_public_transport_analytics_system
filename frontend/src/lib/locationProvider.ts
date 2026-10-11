@@ -1,10 +1,11 @@
 import { ResolvedLocation, PlaceCategory } from "@/types";
 import { INDIAN_TRANSIT_DATABASE } from "./indianTransitDb";
-
-const GOOGLE_MAPS_API_KEY =
-  process.env.GOOGLE_MAPS_API_KEY ||
-  process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY ||
-  "";
+import {
+  getGoogleMapsApiKey,
+  googlePlacesAutocomplete,
+  googleResolvePlaceDetails,
+  googleGeocodeQuery
+} from "./googleMapsService";
 
 function hashString(str: string): number {
   let hash = 0;
@@ -19,70 +20,21 @@ export async function searchIndianLocations(query: string): Promise<ResolvedLoca
   const q = query.trim().toLowerCase();
   if (!q || q.length < 2) return [];
 
-  // Priority 1: Google Places Autocomplete API if key is configured
-  if (GOOGLE_MAPS_API_KEY) {
+  const apiKey = getGoogleMapsApiKey();
+
+  // Priority 1: Real Google Places Autocomplete API (New / Classic)
+  if (apiKey) {
     try {
-      const endpoint = `https://maps.googleapis.com/maps/api/place/autocomplete/json?input=${encodeURIComponent(
-        query
-      )}&components=country:in&key=${GOOGLE_MAPS_API_KEY}`;
-
-      const res = await fetch(endpoint);
-      if (res.ok) {
-        const data = await res.json();
-        if (data.status === "OK" && Array.isArray(data.predictions)) {
-          const googleResults: ResolvedLocation[] = data.predictions.map((pred: any, idx: number) => {
-            const types: string[] = pred.types || [];
-            let category: PlaceCategory = 'address';
-            if (types.includes('train_station') || types.includes('transit_station')) {
-              category = 'railway_station';
-            } else if (types.includes('subway_station')) {
-              category = 'metro_station';
-            } else if (types.includes('bus_station')) {
-              category = 'bus_terminal';
-            } else if (types.includes('airport')) {
-              category = 'airport';
-            } else if (types.includes('tourist_attraction') || types.includes('point_of_interest')) {
-              category = 'landmark';
-            } else if (types.includes('locality') || types.includes('sublocality')) {
-              category = 'locality';
-            }
-
-            const mainText = pred.structured_formatting?.main_text || pred.description.split(',')[0];
-            const secondaryText = pred.structured_formatting?.secondary_text || pred.description;
-
-            const hash = hashString(pred.place_id);
-            const lat = 12.0 + (Math.abs(hash) % 160) / 10.0;
-            const lng = 73.0 + ((Math.abs(hash) >> 3) % 120) / 10.0;
-
-            return {
-              provider: "google",
-              providerPlaceId: pred.place_id,
-              displayName: mainText,
-              formattedAddress: pred.description,
-              locality: mainText,
-              city: secondaryText.split(',')[0] || "India",
-              state: "India",
-              countryCode: "IN",
-              latitude: Math.round(lat * 10000) / 10000,
-              longitude: Math.round(lng * 10000) / 10000,
-              placeTypes: [category],
-              dataSource: "Google Places API (India)",
-              retrievedAt: new Date().toISOString(),
-              secondaryAddress: secondaryText
-            };
-          });
-
-          if (googleResults.length > 0) {
-            return googleResults;
-          }
-        }
+      const googleResults = await googlePlacesAutocomplete(query);
+      if (googleResults.length > 0) {
+        return googleResults;
       }
     } catch (err) {
-      console.warn("Google Places API call failed, using Indian Transit DB fallback", err);
+      console.warn("Google Places Autocomplete failed, falling back to Indian Transit DB", err);
     }
   }
 
-  // Priority 2: Filter local Indian Transit DB
+  // Priority 2: Filter local Indian Transit Database
   const localMatches: ResolvedLocation[] = [];
   for (const item of INDIAN_TRANSIT_DATABASE) {
     const textMatch =
@@ -101,7 +53,7 @@ export async function searchIndianLocations(query: string): Promise<ResolvedLoca
     return rankLocations(q, localMatches);
   }
 
-  // Priority 3: Remote Geocoding API (Nominatim)
+  // Priority 3: Remote Geocoding API (OpenStreetMap Nominatim fallback)
   try {
     const endpoint = `https://nominatim.openstreetmap.org/search?countrycodes=in&format=json&addressdetails=1&limit=8&q=${encodeURIComponent(
       query
@@ -123,33 +75,33 @@ export async function searchIndianLocations(query: string): Promise<ResolvedLoca
           const state = addr.state || "India";
           const locality = addr.suburb || addr.neighbourhood || addr.residential || city;
           
-          let category: PlaceCategory = 'address';
-          const typeStr = (item.type || '').toLowerCase();
+          let category: PlaceCategory = "address";
+          const typeStr = (item.type || "").toLowerCase();
 
-          if (typeStr.includes('railway') || typeStr.includes('station') || item.display_name.toLowerCase().includes('station')) {
-            category = 'railway_station';
-          } else if (typeStr.includes('subway') || typeStr.includes('metro') || item.display_name.toLowerCase().includes('metro')) {
-            category = 'metro_station';
-          } else if (typeStr.includes('bus') || item.display_name.toLowerCase().includes('bus')) {
-            category = 'bus_terminal';
-          } else if (typeStr.includes('aerodrome') || typeStr.includes('airport') || item.display_name.toLowerCase().includes('airport')) {
-            category = 'airport';
-          } else if (typeStr.includes('attraction')) {
-            category = 'landmark';
-          } else if (typeStr.includes('administrative') || typeStr.includes('city')) {
-            category = 'locality';
+          if (typeStr.includes("railway") || typeStr.includes("station") || item.display_name.toLowerCase().includes("station")) {
+            category = "railway_station";
+          } else if (typeStr.includes("subway") || typeStr.includes("metro") || item.display_name.toLowerCase().includes("metro")) {
+            category = "metro_station";
+          } else if (typeStr.includes("bus") || item.display_name.toLowerCase().includes("bus")) {
+            category = "bus_terminal";
+          } else if (typeStr.includes("aerodrome") || typeStr.includes("airport") || item.display_name.toLowerCase().includes("airport")) {
+            category = "airport";
+          } else if (typeStr.includes("attraction")) {
+            category = "landmark";
+          } else if (typeStr.includes("administrative") || typeStr.includes("city")) {
+            category = "locality";
           }
 
           return {
             provider: "nominatim",
             providerPlaceId: `osm-${item.place_id || idx}`,
-            displayName: item.name || item.display_name.split(',')[0],
+            displayName: item.name || item.display_name.split(",")[0],
             formattedAddress: item.display_name,
             locality,
             city,
             district: addr.state_district || addr.county || city,
             state,
-            countryCode: "IN",
+            countryCode: "IN" as const,
             latitude: parseFloat(item.lat),
             longitude: parseFloat(item.lon),
             placeTypes: [category],
@@ -202,7 +154,7 @@ function createAlgorithmicIndianPlace(query: string): ResolvedLocation {
   const lng = 73.0 + ((abs >> 3) % 120) / 10.0;
 
   return {
-    provider: GOOGLE_MAPS_API_KEY ? "google" : "indian_transit_db",
+    provider: getGoogleMapsApiKey() ? "google" : "indian_transit_db",
     providerPlaceId: `custom-in-${abs}`,
     displayName: capital,
     formattedAddress: `${capital}, India`,
@@ -213,23 +165,85 @@ function createAlgorithmicIndianPlace(query: string): ResolvedLocation {
     latitude: Math.round(lat * 10000) / 10000,
     longitude: Math.round(lng * 10000) / 10000,
     placeTypes: ["locality"],
-    dataSource: GOOGLE_MAPS_API_KEY ? "Google Places API" : "RouteSense Indian Location Index",
+    dataSource: getGoogleMapsApiKey() ? "Google Places API" : "RouteSense Indian Location Index",
     retrievedAt: new Date().toISOString(),
     secondaryAddress: `${capital} · India`
   };
 }
 
+/**
+ * Resolves a place ID or query string to exact coordinates and place details
+ */
 export async function resolveLocation(queryOrPlaceId: string): Promise<ResolvedLocation> {
+  const clean = queryOrPlaceId.trim();
+
+  // 1. Check Indian Transit Database match
   const found = INDIAN_TRANSIT_DATABASE.find(
     (item) =>
-      item.providerPlaceId === queryOrPlaceId ||
-      item.displayName.toLowerCase() === queryOrPlaceId.toLowerCase()
+      item.providerPlaceId.toLowerCase() === clean.toLowerCase() ||
+      item.displayName.toLowerCase() === clean.toLowerCase()
   );
 
   if (found) return found;
 
-  const searchResults = await searchIndianLocations(queryOrPlaceId);
-  if (searchResults.length > 0) return searchResults[0];
+  const apiKey = getGoogleMapsApiKey();
 
-  return createAlgorithmicIndianPlace(queryOrPlaceId);
+  // 2. If Google Maps API is configured, resolve via Google Place Details or Geocoding
+  if (apiKey) {
+    try {
+      // If it looks like a placeId (e.g. ChIJ... or places/ChIJ...)
+      if (clean.startsWith("ChIJ") || clean.startsWith("places/ChIJ") || clean.length > 20) {
+        const details = await googleResolvePlaceDetails(clean);
+        if (details && details.lat !== 0 && details.lng !== 0) {
+          return {
+            provider: "google",
+            providerPlaceId: clean,
+            displayName: details.formattedAddress.split(",")[0] || clean,
+            formattedAddress: details.formattedAddress,
+            locality: details.formattedAddress.split(",")[0] || clean,
+            city: details.city || "India",
+            state: details.state || "India",
+            countryCode: "IN",
+            latitude: details.lat,
+            longitude: details.lng,
+            placeTypes: ["locality"],
+            dataSource: "Google Places API (Place Details)",
+            retrievedAt: new Date().toISOString(),
+            secondaryAddress: details.formattedAddress
+          };
+        }
+      }
+
+      // Try Geocoding query
+      const geo = await googleGeocodeQuery(clean);
+      if (geo && geo.lat !== 0 && geo.lng !== 0) {
+        return {
+          provider: "google",
+          providerPlaceId: geo.placeId || `goog-${Date.now()}`,
+          displayName: clean,
+          formattedAddress: geo.formattedAddress,
+          locality: clean,
+          city: "India",
+          state: "India",
+          countryCode: "IN",
+          latitude: geo.lat,
+          longitude: geo.lng,
+          placeTypes: ["locality"],
+          dataSource: "Google Geocoding API",
+          retrievedAt: new Date().toISOString(),
+          secondaryAddress: geo.formattedAddress
+        };
+      }
+    } catch (err) {
+      console.warn("Google resolve place details / geocoding failed", err);
+    }
+  }
+
+  // 3. Fallback to location search results
+  const searchResults = await searchIndianLocations(clean);
+  if (searchResults.length > 0 && searchResults[0].latitude !== 0) {
+    return searchResults[0];
+  }
+
+  return createAlgorithmicIndianPlace(clean);
 }

@@ -105,9 +105,22 @@ export const LocationAutocomplete: React.FC<LocationAutocompleteProps> = ({
     fetchSuggestions(val);
   };
 
-  const handleSelect = (loc: ResolvedLocation) => {
-    onSelectLocation(loc);
-    onTextChange(loc.displayName);
+  const handleSelect = async (loc: ResolvedLocation) => {
+    let resolved = loc;
+    if (loc.latitude === 0 || loc.longitude === 0) {
+      try {
+        const res = await fetchApi<{ location: ResolvedLocation }>(
+          `/location/resolve?place_id=${encodeURIComponent(loc.providerPlaceId)}&q=${encodeURIComponent(loc.displayName)}`
+        );
+        if (res && res.location && res.location.latitude !== 0) {
+          resolved = res.location;
+        }
+      } catch (err) {
+        console.warn("Could not resolve place details on select", err);
+      }
+    }
+    onSelectLocation(resolved);
+    onTextChange(resolved.displayName);
     setIsOpen(false);
     setSuggestions([]);
     setSelectedIndex(-1);

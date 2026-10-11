@@ -7,12 +7,16 @@ interface InteractiveMapProps {
   origin: ResolvedLocation | null;
   destination: ResolvedLocation | null;
   selectedMode?: string;
+  coordinates?: [number, number][];
+  polyline?: string;
 }
 
 export const InteractiveMap: React.FC<InteractiveMapProps> = ({
   origin,
   destination,
-  selectedMode = "BUS"
+  selectedMode = "BUS",
+  coordinates,
+  polyline
 }) => {
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<any>(null);
@@ -20,9 +24,9 @@ export const InteractiveMap: React.FC<InteractiveMapProps> = ({
   useEffect(() => {
     if (typeof window === "undefined" || !mapContainerRef.current) return;
 
-    // Dynamically load Leaflet for SSR safety
+    // Dynamically load Leaflet for reliable multi-platform SSR rendering
     import("leaflet").then((L) => {
-      // Fix default marker icon issues in webpack/nextjs
+      // Fix default marker icon assets
       delete (L.Icon.Default.prototype as any)._getIconUrl;
       L.Icon.Default.mergeOptions({
         iconRetinaUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png",
@@ -30,10 +34,10 @@ export const InteractiveMap: React.FC<InteractiveMapProps> = ({
         shadowUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png"
       });
 
-      const oLat = origin?.latitude || 19.0178;
-      const oLng = origin?.longitude || 72.8478;
-      const dLat = destination?.latitude || 18.9400;
-      const dLng = destination?.longitude || 72.8353;
+      const oLat = origin?.latitude && origin.latitude !== 0 ? origin.latitude : 19.0178;
+      const oLng = origin?.longitude && origin.longitude !== 0 ? origin.longitude : 72.8478;
+      const dLat = destination?.latitude && destination.latitude !== 0 ? destination.latitude : 18.9400;
+      const dLng = destination?.longitude && destination.longitude !== 0 ? destination.longitude : 72.8353;
 
       if (!mapInstanceRef.current) {
         const map = L.map(mapContainerRef.current).setView([oLat, oLng], 12);
@@ -49,72 +53,85 @@ export const InteractiveMap: React.FC<InteractiveMapProps> = ({
 
       const map = mapInstanceRef.current;
 
-      // Clear previous layers
+      // Clear previous markers & polylines
       map.eachLayer((layer: any) => {
         if (layer instanceof L.Marker || layer instanceof L.Polyline) {
           map.removeLayer(layer);
         }
       });
 
-      // Custom Green Start Marker
+      // Custom Start (Green) and End (Rose) Markers
       const startIcon = L.divIcon({
         className: "custom-map-marker-start",
-        html: `<div style="background-color: #10b981; width: 20px; height: 20px; border-radius: 50%; border: 3px solid white; box-shadow: 0 2px 6px rgba(0,0,0,0.4);"></div>`,
-        iconSize: [20, 20],
-        iconAnchor: [10, 10]
+        html: `<div style="background-color: #10b981; width: 18px; height: 18px; border-radius: 50%; border: 3px solid white; box-shadow: 0 2px 6px rgba(0,0,0,0.4);"></div>`,
+        iconSize: [18, 18],
+        iconAnchor: [9, 9]
       });
 
-      // Custom Red End Marker
       const endIcon = L.divIcon({
         className: "custom-map-marker-end",
-        html: `<div style="background-color: #f43f5e; width: 20px; height: 20px; border-radius: 50%; border: 3px solid white; box-shadow: 0 2px 6px rgba(0,0,0,0.4);"></div>`,
-        iconSize: [20, 20],
-        iconAnchor: [10, 10]
+        html: `<div style="background-color: #f43f5e; width: 18px; height: 18px; border-radius: 50%; border: 3px solid white; box-shadow: 0 2px 6px rgba(0,0,0,0.4);"></div>`,
+        iconSize: [18, 18],
+        iconAnchor: [9, 9]
       });
 
       const startMarker = L.marker([oLat, oLng], { icon: startIcon }).addTo(map);
-      startMarker.bindPopup(`<b>Start:</b> ${origin?.displayName || "Origin Location"}<br/>${origin?.city || "India"}`);
+      startMarker.bindPopup(`<b>Start:</b> ${origin?.displayName || "Origin"}<br/>${origin?.formattedAddress || "India"}`);
 
       const endMarker = L.marker([dLat, dLng], { icon: endIcon }).addTo(map);
-      endMarker.bindPopup(`<b>Destination:</b> ${destination?.displayName || "Destination Location"}<br/>${destination?.city || "India"}`);
+      endMarker.bindPopup(`<b>Destination:</b> ${destination?.displayName || "Destination"}<br/>${destination?.formattedAddress || "India"}`);
 
-      // Midpoint / Transfer Node
-      const midLat = (oLat + dLat) / 2;
-      const midLng = (oLng + dLng) / 2;
-
-      // Route Line Polyline
+      // Path Styling by transport mode
       const pathColor =
         selectedMode === "BUS"
           ? "#0284c7"
           : selectedMode === "TRAIN"
           ? "#a855f7"
+          : selectedMode === "METRO"
+          ? "#9333ea"
           : selectedMode === "CAB"
           ? "#f59e0b"
-          : "#10b981";
+          : selectedMode === "AUTO"
+          ? "#d97706"
+          : selectedMode === "BIKE"
+          ? "#10b981"
+          : "#64748b";
 
-      const polyline = L.polyline(
-        [
+      // If detailed route coordinates are supplied from Google Routes API, draw the exact geometry
+      let routePoints: [number, number][] = [];
+      if (coordinates && coordinates.length > 1) {
+        routePoints = coordinates;
+      } else {
+        const midLat = (oLat + dLat) / 2;
+        const midLng = (oLng + dLng) / 2;
+        routePoints = [
           [oLat, oLng],
           [midLat, midLng],
           [dLat, dLng]
-        ],
-        { color: pathColor, weight: 5, opacity: 0.8, dashArray: selectedMode === "CAB" ? "5, 10" : undefined }
-      ).addTo(map);
+        ];
+      }
 
-      // Fit Bounds to show full journey
-      const bounds = L.latLngBounds([[oLat, oLng], [dLat, dLng]]);
+      const polylineLayer = L.polyline(routePoints, {
+        color: pathColor,
+        weight: 5,
+        opacity: 0.85,
+        lineJoin: "round"
+      }).addTo(map);
+
+      // Fit bounds to display entire journey
+      const bounds = L.latLngBounds(routePoints);
       map.fitBounds(bounds, { padding: [40, 40] });
     });
-  }, [origin, destination, selectedMode]);
+  }, [origin, destination, selectedMode, coordinates, polyline]);
 
   return (
-    <div className="w-full h-full rounded-2xl overflow-hidden border border-slate-800 relative shadow-inner">
-      <div ref={mapContainerRef} className="w-full h-full min-h-[280px] bg-slate-950 z-0" />
+    <div className="w-full h-full rounded-2xl overflow-hidden border border-slate-200 relative shadow-inner">
+      <div ref={mapContainerRef} className="w-full h-full min-h-[360px] bg-slate-100 z-0" />
       
       {/* Mode Badge Indicator */}
-      <div className="absolute top-3 right-3 z-10 bg-slate-900/90 backdrop-blur border border-slate-800 px-3 py-1.5 rounded-lg text-xs font-semibold text-white flex items-center gap-2 shadow">
-        <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse" />
-        <span>Map Layer: {selectedMode} Route Corridor</span>
+      <div className="absolute top-3 right-3 z-10 bg-white/95 backdrop-blur border border-slate-200 px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-800 flex items-center gap-2 shadow-sm">
+        <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
+        <span>Corridor Map: {selectedMode}</span>
       </div>
     </div>
   );

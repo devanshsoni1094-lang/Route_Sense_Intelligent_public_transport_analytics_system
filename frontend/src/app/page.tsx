@@ -405,8 +405,14 @@ export default function HomePage() {
                       <div>
                         <h4 className="text-base font-bold text-slate-900">{opt.title}</h4>
                         <p className="text-xs text-slate-500 font-medium">{opt.operator || "Public Transit"}</p>
-                        <div className="mt-1 flex items-center gap-1.5">
+                        <div className="mt-1 flex items-center gap-1.5 flex-wrap">
                           {renderPriceBadge(opt.price_type)}
+                          {opt.is_live_google_route && (
+                            <span className="bg-sky-50 text-sky-700 border border-sky-200 text-[10px] font-bold px-2 py-0.5 rounded-md flex items-center gap-1">
+                              <span className="w-1.5 h-1.5 rounded-full bg-sky-500 animate-pulse" />
+                              Google Live
+                            </span>
+                          )}
                         </div>
                       </div>
                     </div>
@@ -509,6 +515,8 @@ export default function HomePage() {
                     origin={sourceLoc}
                     destination={destLoc}
                     selectedMode={selectedOption.mode}
+                    coordinates={selectedOption.coordinates}
+                    polyline={selectedOption.polyline}
                   />
                 </div>
               </div>
