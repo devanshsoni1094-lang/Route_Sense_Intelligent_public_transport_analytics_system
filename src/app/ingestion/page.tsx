@@ -4,7 +4,7 @@ import React, { useEffect, useState } from "react";
 import { UploadCloud, FileSpreadsheet, CheckCircle2, XCircle, AlertCircle, History } from "lucide-react";
 import { fetchApi } from "@/lib/api";
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1";
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "/api/v1";
 
 export default function IngestionPage() {
   const [history, setHistory] = useState<any[]>([]);
