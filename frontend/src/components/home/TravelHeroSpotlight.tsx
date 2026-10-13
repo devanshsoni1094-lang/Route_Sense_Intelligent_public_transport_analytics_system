@@ -25,67 +25,67 @@ interface TravelHeroSpotlightProps {
 const POSITIVE_TRAVEL_QUOTES = [
   {
     quote: "Safar khoobsurat hai manzil se bhi.",
-    thought: "The true magic of travelling lives in the cool window breeze, the steady rhythm of the tracks, and the stories found between stations.",
-    tag: "SPIRIT OF INDIA",
-    icon: "🌄",
+    thought: "The true soul of Mumbai lives in the Sea Link breeze, the clatter of the local train tracks, and the golden dusk over Marine Drive.",
+    tag: "SPIRIT OF AAMCHI MUMBAI",
+    icon: "🌊",
     gradient: "from-indigo-950 via-purple-900 to-amber-700",
-    locationMood: "Western Ghats Corridor"
+    locationMood: "Bandra-Worli Sea Link"
   },
   {
     quote: "Not all those who wander are lost.",
-    thought: "Every turn brings an unexpected horizon. Take the commuter express, gaze at the skyline, and let curiosity lead your day.",
-    tag: "WANDERLUST",
-    icon: "✨",
+    thought: "Catch the fast local train from Churchgate, watch the Arabian coast shimmer at twilight, and feel the heartbeat of maximum city.",
+    tag: "MUMBAI LOCAL VIBES",
+    icon: "🚆",
     gradient: "from-blue-950 via-indigo-900 to-rose-700",
-    locationMood: "Konkan Rail Odyssey"
+    locationMood: "Western Railway Fast Line"
   },
   {
     quote: "Travel is the only thing you buy that makes you richer.",
-    thought: "Richest is the commuter who collects golden sunrises over metropolitan bridges and twilight along peaceful countryside lines.",
-    tag: "GOLDEN MEMORIES",
-    icon: "🎒",
+    thought: "Richest is the commuter who sips cutting chai at Dadar station, feels the cool wind at the window, and moves with millions in harmony.",
+    tag: "PULSE OF THE CITY",
+    icon: "☕",
     gradient: "from-purple-950 via-rose-900 to-amber-600",
-    locationMood: "Express Highway Corridors"
+    locationMood: "Dadar Central Junction"
   },
   {
     quote: "Wherever you go, go with all your heart.",
-    thought: "Step aboard with peace of mind. Every journey across our cities connects millions of hopeful dreams in harmonic motion.",
-    tag: "MINDFUL COMMUTE",
-    icon: "🚆",
+    thought: "Step aboard the red BEST electric bus or gliding Metro Line 3. In Mumbai, every commuter carries a universe of dreams.",
+    tag: "HEART OF MUMBAI",
+    icon: "💚",
     gradient: "from-slate-950 via-violet-900 to-orange-700",
-    locationMood: "Suburban Lifeline Track"
+    locationMood: "BEST Electric Corridor"
   },
   {
     quote: "A journey of a thousand miles begins with a single step.",
-    thought: "From a brisk 5-minute metro sprint to an interstate superfast voyage, each step forward expands the boundaries of your world.",
-    tag: "STEP FORWARD",
-    icon: "🧭",
+    thought: "From a ₹5 local train pass to an ocean bridge drive across Atal Setu, every journey across Mumbai takes you closer to your ambitions.",
+    tag: "MAXIMUM DREAMS",
+    icon: "🌟",
     gradient: "from-stone-950 via-purple-900 to-rose-600",
-    locationMood: "National Transit Arteries"
+    locationMood: "Coastal Road & Atal Setu"
   },
   {
     quote: "Live with no excuses and travel with no regrets.",
-    thought: "Catch the fast local train, feel the brisk wind on the platform, and embrace the vibrant, unstoppable pulse of everyday life.",
-    tag: "COMMUTER ENERGY",
-    icon: "☕",
+    thought: "Take the window seat, watch the Victorian heritage arches of CSMT light up, and celebrate the daily resilience of Mumbai.",
+    tag: "CITY OF DREAMS",
+    icon: "🌇",
     gradient: "from-zinc-950 via-pink-900 to-amber-700",
     locationMood: "Historic CSMT Terminus"
   },
   {
     quote: "The world is a book, and those who do not travel read only one page.",
-    thought: "Every highway, bus terminus, and railway route writes a fresh paragraph in your grand personal story.",
-    tag: "OPEN CHAPTERS",
+    thought: "From Colaba's historic docks to Borivali's green National Park forest, open a vibrant new chapter on every Mumbai route.",
+    tag: "DISCOVER MUMBAI",
     icon: "📖",
     gradient: "from-violet-950 via-purple-900 to-orange-600",
-    locationMood: "Grand Trunk Corridor"
+    locationMood: "Sanjay Gandhi National Park Rail"
   },
   {
     quote: "Life is short and the world is wide.",
-    thought: "Embrace the journey today. Breathe in the open air, greet fellow travelers, and celebrate the adventure of living.",
-    tag: "HORIZONS AHEAD",
+    thought: "Breathe in the Arabian ocean air at Bandstand, wave to fellow travelers, and let Mumbai's electric energy guide your path.",
+    tag: "COASTAL HORIZONS",
     icon: "🌅",
     gradient: "from-indigo-950 via-rose-900 to-amber-600",
-    locationMood: "Arabian Sea Coastal Line"
+    locationMood: "Bandra Bandstand Promenade"
   }
 ];
 

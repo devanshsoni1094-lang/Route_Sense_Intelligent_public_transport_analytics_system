@@ -209,24 +209,25 @@ function createAlgorithmicIndianPlace(query: string): ResolvedLocation {
 
   let hash = hashString(clean);
   const abs = Math.abs(hash);
-  const lat = 12.0 + (abs % 160) / 10.0;
-  const lng = 73.0 + ((abs >> 3) % 120) / 10.0;
+  // Constrain strictly within Mumbai Metropolitan Region (MMR)
+  const lat = 18.92 + (abs % 340) / 1000.0; // 18.92N to 19.26N (Colaba to Borivali/Thane)
+  const lng = 72.82 + ((abs >> 3) % 180) / 1000.0; // 72.82E to 73.00E (Arabian Sea to Thane Creek)
 
   return {
     provider: getGoogleMapsServerKey() ? "google" : "indian_transit_db",
-    providerPlaceId: `custom-in-${abs}`,
-    displayName: capital,
-    formattedAddress: `${capital}, India`,
+    providerPlaceId: `bom-${abs}`,
+    displayName: `${capital}, Mumbai`,
+    formattedAddress: `${capital}, Mumbai, Maharashtra 400001, India`,
     locality: capital,
-    city: "India Transit Region",
-    state: "India",
+    city: "Mumbai",
+    state: "Maharashtra",
     countryCode: "IN",
     latitude: Math.round(lat * 10000) / 10000,
     longitude: Math.round(lng * 10000) / 10000,
     placeTypes: ["locality"],
-    dataSource: getGoogleMapsServerKey() ? "Google Places API" : "RouteSense Indian Location Index",
+    dataSource: getGoogleMapsServerKey() ? "Google Places API (Mumbai Bias)" : "Route Sense Mumbai Location Index",
     retrievedAt: new Date().toISOString(),
-    secondaryAddress: `${capital} · India`
+    secondaryAddress: `${capital} · Mumbai Metropolitan Region`
   };
 }
 
@@ -235,6 +236,30 @@ function createAlgorithmicIndianPlace(query: string): ResolvedLocation {
  */
 export async function resolveLocation(queryOrPlaceId: string): Promise<ResolvedLocation> {
   const clean = queryOrPlaceId.trim();
+
+  // 0. Direct Raw Coordinates parsing (e.g. "19.0178,72.8478")
+  const coordMatch = clean.match(/^(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)$/);
+  if (coordMatch) {
+    const lat = parseFloat(coordMatch[1]);
+    const lng = parseFloat(coordMatch[2]);
+    if (!isNaN(lat) && !isNaN(lng)) {
+      return {
+        provider: "indian_transit_db",
+        providerPlaceId: `coords-${lat}-${lng}`,
+        displayName: `${lat.toFixed(4)}, ${lng.toFixed(4)}`,
+        formattedAddress: `${lat.toFixed(4)}, ${lng.toFixed(4)}, Mumbai, India`,
+        locality: "Mumbai",
+        city: "Mumbai",
+        state: "Maharashtra",
+        countryCode: "IN",
+        latitude: lat,
+        longitude: lng,
+        placeTypes: ["locality"],
+        dataSource: "Direct GPS Coordinates",
+        retrievedAt: new Date().toISOString()
+      };
+    }
+  }
 
   // 1. Check Indian Transit Database match (Exact ID, display name, city, or prefix)
   const found = INDIAN_TRANSIT_DATABASE.find(

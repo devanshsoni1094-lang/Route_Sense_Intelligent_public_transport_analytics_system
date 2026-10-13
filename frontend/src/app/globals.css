@@ -322,3 +322,41 @@ body {
   animation: birdsGlide 8s linear infinite;
 }
 
+/* Fluid Floating & Micro-Animations */
+@keyframes floatSubtle {
+  0%, 100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-4px);
+  }
+}
+
+@keyframes glowPulse {
+  0%, 100% {
+    opacity: 0.6;
+  }
+  50% {
+    opacity: 1;
+    filter: drop-shadow(0 0 8px rgba(244, 63, 94, 0.8));
+  }
+}
+
+.anim-float-subtle {
+  animation: floatSubtle 4s ease-in-out infinite;
+}
+
+.anim-glow-pulse {
+  animation: glowPulse 2.5s ease-in-out infinite;
+}
+
+/* Responsive Hide Scrollbar Utility */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+

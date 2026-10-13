@@ -103,10 +103,10 @@ export const BookingModal: React.FC<BookingModalProps> = ({
 
   if (!isOpen || !journey) return null;
 
-  const sourceName = originLocation?.displayName || "Origin Station";
-  const sourceCity = originLocation?.city || "Source City";
-  const destName = destLocation?.displayName || "Destination Station";
-  const destCity = destLocation?.city || "Destination City";
+  const sourceName = originLocation?.displayName || "Dadar Central Station";
+  const sourceCity = originLocation?.city || "Mumbai";
+  const destName = destLocation?.displayName || "CSMT Terminus";
+  const destCity = destLocation?.city || "Mumbai";
 
   const singleFare = journey.price_per_passenger_inr || journey.quoted_price_inr || journey.fare_inr || 10;
   const totalFare = Math.max(5, singleFare * numPassengers);

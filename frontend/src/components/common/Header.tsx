@@ -50,12 +50,12 @@ export const Header: React.FC = () => {
             <h1 className="text-sm sm:text-base font-extrabold tracking-tight text-white group-hover:text-rose-300 transition-colors">
               ROUTE SENSE
             </h1>
-            <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-white/10 text-rose-300 border border-white/10 hidden sm:inline-block">
-              VR Spatial
+            <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-rose-500/20 text-rose-300 border border-rose-500/30 hidden sm:inline-block">
+              Mumbai MMR
             </span>
           </div>
           <p className="text-[11px] text-stone-400 font-medium tracking-tight">
-            Spatial Mobility by Orely &bull; India
+            Mumbai Metropolitan Region &bull; Live Transit
           </p>
         </div>
       </Link>

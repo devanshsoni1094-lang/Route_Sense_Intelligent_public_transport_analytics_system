@@ -239,7 +239,13 @@ export async function googlePlacesAutocomplete(query: string): Promise<{
       body: JSON.stringify({
         input: query.trim(),
         includedRegionCodes: ["in"],
-        languageCode: "en"
+        languageCode: "en",
+        locationBias: {
+          circle: {
+            center: { latitude: 19.0760, longitude: 72.8777 },
+            radius: 45000.0
+          }
+        }
       })
     });
 
@@ -292,7 +298,7 @@ export async function googlePlacesAutocomplete(query: string): Promise<{
   try {
     const endpoint = `https://maps.googleapis.com/maps/api/place/autocomplete/json?input=${encodeURIComponent(
       query
-    )}&components=country:in&language=en&key=${apiKey}`;
+    )}&components=country:in&location=19.0760,72.8777&radius=45000&language=en&key=${apiKey}`;
 
     const res = await fetch(endpoint);
     if (res.ok) {
@@ -474,9 +480,15 @@ export async function googleGeocodeQuery(
   if (!apiKey || !query) return null;
 
   try {
+    const mumbaiAddress =
+      query.toLowerCase().includes("mumbai") ||
+      query.toLowerCase().includes("thane") ||
+      query.toLowerCase().includes("navi mumbai")
+        ? query
+        : `${query}, Mumbai`;
     const endpoint = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(
-      query
-    )}&components=country:in&key=${apiKey}`;
+      mumbaiAddress
+    )}&components=country:in&bounds=18.88,72.75|19.38,73.20&key=${apiKey}`;
 
     const res = await fetch(endpoint);
     if (res.ok) {
