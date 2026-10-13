@@ -1,40 +1,164 @@
 "use client";
 
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useRef, useState, useCallback } from "react";
 import { ResolvedLocation, RouteStep } from "@/types";
-import { Maximize2, Minimize2, ZoomIn, ZoomOut, Layers, Navigation, Compass, MapPin } from "lucide-react";
+import {
+  Maximize2,
+  Minimize2,
+  ZoomIn,
+  ZoomOut,
+  Layers,
+  Navigation,
+  Compass,
+  MapPin,
+  Play,
+  Pause,
+  RotateCcw,
+  ExternalLink,
+  ShieldCheck,
+  Sun,
+  Moon,
+  Map as MapIcon,
+  Sparkles,
+  Info
+} from "lucide-react";
 
 interface InteractiveMapProps {
   origin: ResolvedLocation | null;
   destination: ResolvedLocation | null;
   selectedMode?: string;
+  journeyTitle?: string;
+  distanceKm?: number;
+  durationMin?: number;
   coordinates?: [number, number][];
   polyline?: string;
   steps?: RouteStep[];
   highlightedStepIndex?: number | null;
   onSelectStep?: (index: number) => void;
+  cartoApiKey?: string;
 }
+
+// Default CARTO Basemaps API key provided by user
+const DEFAULT_CARTO_KEY = "cb1_4jk9_1_bee4b9e4f372e1ce3f9056e0";
 
 export const InteractiveMap: React.FC<InteractiveMapProps> = ({
   origin,
   destination,
   selectedMode = "BUS",
+  journeyTitle,
+  distanceKm,
+  durationMin,
   coordinates,
   polyline,
   steps,
   highlightedStepIndex,
-  onSelectStep
+  onSelectStep,
+  cartoApiKey
 }) => {
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<any>(null);
-  const [mapError, setMapError] = useState(false);
-  const [mapStyle, setMapStyle] = useState<"dark" | "voyager">("dark");
+  const leafletRef = useRef<any>(null);
+  const tileLayerRef = useRef<any>(null);
+  const vehicleMarkerRef = useRef<any>(null);
+  const waypointMarkersRef = useRef<any[]>([]);
 
+  const [mapError, setMapError] = useState(false);
+  const [mapStyle, setMapStyle] = useState<"dark" | "voyager" | "positron">("dark");
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const [isSimulating, setIsSimulating] = useState(false);
+  const [simProgress, setSimProgress] = useState(0); // 0 to 100%
+  const [currentSpeed, setCurrentSpeed] = useState(42); // km/h
+
+  const activeCartoKey =
+    cartoApiKey ||
+    process.env.NEXT_PUBLIC_CARTO_API_KEY ||
+    DEFAULT_CARTO_KEY;
+
+  // Origin & destination coordinates
   const oLat = origin?.latitude && origin.latitude !== 0 ? origin.latitude : 19.0178;
   const oLng = origin?.longitude && origin.longitude !== 0 ? origin.longitude : 72.8478;
   const dLat = destination?.latitude && destination.latitude !== 0 ? destination.latitude : 18.9400;
   const dLng = destination?.longitude && destination.longitude !== 0 ? destination.longitude : 72.8353;
 
+  // Mode Emoji
+  const getModeEmoji = (mode: string) => {
+    switch (mode) {
+      case "TRAIN":
+        return "🚆";
+      case "METRO":
+        return "🚇";
+      case "BUS":
+        return "🚌";
+      case "CAB":
+        return "🚖";
+      case "AUTO":
+        return "🛺";
+      case "BIKE":
+        return "🛵";
+      case "CAR_PERSONAL":
+        return "🚗";
+      case "MOTORCYCLE_PERSONAL":
+        return "🏍️";
+      default:
+        return "🚌";
+    }
+  };
+
+  // Mode Color Accent
+  const getModeColor = (mode: string) => {
+    switch (mode) {
+      case "TRAIN":
+        return "#f43f5e";
+      case "METRO":
+        return "#a855f7";
+      case "BUS":
+        return "#f97316";
+      case "CAB":
+        return "#eab308";
+      case "AUTO":
+        return "#f59e0b";
+      case "BIKE":
+        return "#10b981";
+      case "CAR_PERSONAL":
+        return "#fb7185";
+      case "MOTORCYCLE_PERSONAL":
+        return "#fb923c";
+      default:
+        return "#f43f5e";
+    }
+  };
+
+  const primaryColor = getModeColor(selectedMode);
+  const vehicleEmoji = getModeEmoji(selectedMode);
+
+  // Compute Route Points
+  const getRoutePoints = useCallback((): [number, number][] => {
+    if (coordinates && coordinates.length > 1) {
+      return coordinates;
+    }
+    // Generate curved arc corridor between start and end
+    const midLat = (oLat + dLat) / 2 + 0.004;
+    const midLng = (oLng + dLng) / 2 - 0.003;
+    return [
+      [oLat, oLng],
+      [midLat, midLng],
+      [dLat, dLng]
+    ];
+  }, [coordinates, oLat, oLng, dLat, dLng]);
+
+  // Construct CARTO Basemap URL with user's verified API key
+  const getTileUrl = (style: "dark" | "voyager" | "positron") => {
+    switch (style) {
+      case "dark":
+        return `https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png?key=${activeCartoKey}`;
+      case "voyager":
+        return `https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png?key=${activeCartoKey}`;
+      case "positron":
+        return `https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png?key=${activeCartoKey}`;
+    }
+  };
+
+  // Initialize Map
   useEffect(() => {
     if (typeof window === "undefined" || !mapContainerRef.current) return;
 
@@ -43,8 +167,9 @@ export const InteractiveMap: React.FC<InteractiveMapProps> = ({
     import("leaflet")
       .then((L) => {
         if (!isMounted || !mapContainerRef.current) return;
+        leafletRef.current = L;
 
-        // Leaflet icon fix
+        // Fix leaflet icon paths
         delete (L.Icon.Default.prototype as any)._getIconUrl;
         L.Icon.Default.mergeOptions({
           iconRetinaUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png",
@@ -52,132 +177,103 @@ export const InteractiveMap: React.FC<InteractiveMapProps> = ({
           shadowUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png"
         });
 
-        // Initialize Map if not already initialized
+        // Initialize Map if not present
         if (!mapInstanceRef.current) {
           const map = L.map(mapContainerRef.current, {
             zoomControl: false,
             attributionControl: true
           }).setView([oLat, oLng], 12);
 
-          const tileUrl =
-            mapStyle === "dark"
-              ? "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
-              : "https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png";
-
-          L.tileLayer(tileUrl, {
+          const tileLayer = L.tileLayer(getTileUrl(mapStyle), {
             attribution:
-              '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/">CARTO</a>',
+              '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a> | Live Active Corridor',
             subdomains: "abcd",
-            maxZoom: 19
+            maxZoom: 20
           }).addTo(map);
 
+          tileLayerRef.current = tileLayer;
           mapInstanceRef.current = map;
         }
 
         const map = mapInstanceRef.current;
+        const L_instance = leafletRef.current;
 
-        // Clear previous vector layers & markers
+        // Update tile layer if changed
+        if (tileLayerRef.current) {
+          tileLayerRef.current.setUrl(getTileUrl(mapStyle));
+        }
+
+        // Clean up previous markers & layers (except tile layer)
         map.eachLayer((layer: any) => {
-          if (layer instanceof L.Marker || layer instanceof L.Polyline || layer instanceof L.CircleMarker) {
+          if (
+            layer instanceof L_instance.Marker ||
+            layer instanceof L_instance.Polyline ||
+            layer instanceof L_instance.CircleMarker
+          ) {
             map.removeLayer(layer);
           }
         });
+        waypointMarkersRef.current = [];
+        vehicleMarkerRef.current = null;
 
-        // Update tile layer if style changed
-        map.eachLayer((layer: any) => {
-          if (layer instanceof L.TileLayer) {
-            map.removeLayer(layer);
-          }
-        });
-        const activeTileUrl =
-          mapStyle === "dark"
-            ? "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
-            : "https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png";
-
-        L.tileLayer(activeTileUrl, {
-          attribution:
-            '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/">CARTO</a> | Routes via Google Platform',
-          subdomains: "abcd",
-          maxZoom: 19
-        }).addTo(map);
-
-        // Custom pulsing origin beacon (Warm Coral / Orange)
-        const startIcon = L.divIcon({
+        // 1. Origin Beacon Marker
+        const startIcon = L_instance.divIcon({
           className: "custom-beacon-start",
-          html: `<div style="position: relative; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center;">
-            <div style="position: absolute; width: 24px; height: 24px; border-radius: 50%; background: rgba(249, 115, 22, 0.4); animation: orangePulse 2s infinite;"></div>
-            <div style="width: 14px; height: 14px; border-radius: 50%; background: #f97316; border: 2.5px solid #ffffff; box-shadow: 0 0 10px rgba(249, 115, 22, 0.9);"></div>
+          html: `<div style="position: relative; width: 28px; height: 28px; display: flex; align-items: center; justify-content: center;">
+            <div style="position: absolute; width: 28px; height: 28px; border-radius: 50%; background: rgba(249, 115, 22, 0.4); animation: orangePulse 2s infinite;"></div>
+            <div style="width: 14px; height: 14px; border-radius: 50%; background: #f97316; border: 2.5px solid #ffffff; box-shadow: 0 0 12px rgba(249, 115, 22, 1); display: flex; align-items: center; justify-content: center;">
+              <div style="width: 4px; height: 4px; border-radius: 50%; background: #ffffff;"></div>
+            </div>
           </div>`,
-          iconSize: [24, 24],
-          iconAnchor: [12, 12]
+          iconSize: [28, 28],
+          iconAnchor: [14, 14]
         });
 
-        // Custom pulsing destination beacon (Rose / Coral)
-        const endIcon = L.divIcon({
-          className: "custom-beacon-end",
-          html: `<div style="position: relative; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center;">
-            <div style="position: absolute; width: 24px; height: 24px; border-radius: 50%; background: rgba(244, 63, 94, 0.4); animation: coralPulse 2s infinite;"></div>
-            <div style="width: 14px; height: 14px; border-radius: 50%; background: #f43f5e; border: 2.5px solid #ffffff; box-shadow: 0 0 10px rgba(244, 63, 94, 0.9);"></div>
-          </div>`,
-          iconSize: [24, 24],
-          iconAnchor: [12, 12]
-        });
-
-        const startMarker = L.marker([oLat, oLng], { icon: startIcon }).addTo(map);
+        const startMarker = L_instance.marker([oLat, oLng], { icon: startIcon }).addTo(map);
         startMarker.bindPopup(`
-          <div style="font-family: inherit; font-size: 12px; color: #1c1917; line-height: 1.4;">
-            <div style="font-weight: 700; color: #ea580c; text-transform: uppercase; font-size: 10px; letter-spacing: 0.5px;">Departure Point</div>
-            <div style="font-weight: 600; font-size: 13px;">${origin?.displayName || "Origin"}</div>
+          <div style="font-family: inherit; font-size: 12px; color: #1c1917; padding: 4px; line-height: 1.4;">
+            <div style="font-weight: 800; color: #ea580c; text-transform: uppercase; font-size: 10px; letter-spacing: 0.5px;">Departure Point</div>
+            <div style="font-weight: 700; font-size: 13px; color: #1c1917; margin-top: 2px;">${origin?.displayName || "Origin"}</div>
             <div style="color: #78716c; font-size: 11px;">${origin?.formattedAddress || "India"}</div>
           </div>
         `);
 
-        const endMarker = L.marker([dLat, dLng], { icon: endIcon }).addTo(map);
+        // 2. Destination Beacon Marker
+        const endIcon = L_instance.divIcon({
+          className: "custom-beacon-end",
+          html: `<div style="position: relative; width: 28px; height: 28px; display: flex; align-items: center; justify-content: center;">
+            <div style="position: absolute; width: 28px; height: 28px; border-radius: 50%; background: rgba(244, 63, 94, 0.4); animation: coralPulse 2s infinite;"></div>
+            <div style="width: 14px; height: 14px; border-radius: 50%; background: #f43f5e; border: 2.5px solid #ffffff; box-shadow: 0 0 12px rgba(244, 63, 94, 1); display: flex; align-items: center; justify-content: center;">
+              <div style="width: 4px; height: 4px; border-radius: 50%; background: #ffffff;"></div>
+            </div>
+          </div>`,
+          iconSize: [28, 28],
+          iconAnchor: [14, 14]
+        });
+
+        const endMarker = L_instance.marker([dLat, dLng], { icon: endIcon }).addTo(map);
         endMarker.bindPopup(`
-          <div style="font-family: inherit; font-size: 12px; color: #1c1917; line-height: 1.4;">
-            <div style="font-weight: 700; color: #e11d48; text-transform: uppercase; font-size: 10px; letter-spacing: 0.5px;">Destination Point</div>
-            <div style="font-weight: 600; font-size: 13px;">${destination?.displayName || "Destination"}</div>
+          <div style="font-family: inherit; font-size: 12px; color: #1c1917; padding: 4px; line-height: 1.4;">
+            <div style="font-weight: 800; color: #e11d48; text-transform: uppercase; font-size: 10px; letter-spacing: 0.5px;">Arrival Destination</div>
+            <div style="font-weight: 700; font-size: 13px; color: #1c1917; margin-top: 2px;">${destination?.displayName || "Destination"}</div>
             <div style="color: #78716c; font-size: 11px;">${destination?.formattedAddress || "India"}</div>
           </div>
         `);
 
-        // Mode-specific route colors with VisionOS coral/rose palette
-        const modeColorMap: Record<string, string> = {
-          TRAIN: "#f43f5e",
-          METRO: "#ec4899",
-          BUS: "#f97316",
-          CAB: "#fbbf24",
-          AUTO: "#f59e0b",
-          BIKE: "#10b981",
-          CAR_PERSONAL: "#fb7185",
-          MOTORCYCLE_PERSONAL: "#fb923c"
-        };
-        const primaryColor = modeColorMap[selectedMode] || "#f43f5e";
+        const routePoints = getRoutePoints();
 
-        let routePoints: [number, number][] = [];
-        if (coordinates && coordinates.length > 1) {
-          routePoints = coordinates;
-        } else {
-          const midLat = (oLat + dLat) / 2 + 0.003;
-          const midLng = (oLng + dLng) / 2 - 0.003;
-          routePoints = [
-            [oLat, oLng],
-            [midLat, midLng],
-            [dLat, dLng]
-          ];
-        }
-
-        // Draw glowing corridor: Outer diffused warm glow
-        L.polyline(routePoints, {
+        // 3. Draw Active Corridor Polylines
+        // Outer glow
+        L_instance.polyline(routePoints, {
           color: primaryColor,
-          weight: 9,
-          opacity: 0.3,
+          weight: 10,
+          opacity: 0.28,
           lineJoin: "round",
           lineCap: "round"
         }).addTo(map);
 
-        // Draw crisp core polyline
-        L.polyline(routePoints, {
+        // Core polyline
+        L_instance.polyline(routePoints, {
           color: primaryColor,
           weight: 4.5,
           opacity: 0.95,
@@ -185,33 +281,52 @@ export const InteractiveMap: React.FC<InteractiveMapProps> = ({
           lineCap: "round"
         }).addTo(map);
 
-        // Transfer / Waypoint stop dots if steps exist
-        if (steps && steps.length > 1) {
+        // 4. Waypoint markers for steps
+        if (steps && steps.length > 0) {
           const stepCount = steps.length;
-          for (let i = 1; i < stepCount; i++) {
-            const frac = i / stepCount;
+          const markers: any[] = [];
+
+          steps.forEach((step, idx) => {
+            const frac = idx / Math.max(1, stepCount - 1);
             const ptIdx = Math.min(routePoints.length - 1, Math.floor(routePoints.length * frac));
             const pt = routePoints[ptIdx];
-            if (pt) {
-              const stopMarker = L.circleMarker(pt, {
-                radius: 4.5,
-                fillColor: "#ffffff",
-                fillOpacity: 1,
-                color: primaryColor,
-                weight: 2
-              }).addTo(map);
+            if (!pt) return;
 
-              stopMarker.bindPopup(`
-                <div style="font-size: 11px; font-weight: 600; color: #1c1917;">
-                  Step ${i}: ${steps[i - 1]?.instruction || "Transfer Station"}
+            const isHighlighted = highlightedStepIndex === idx;
+
+            const waypointIcon = L_instance.divIcon({
+              className: `waypoint-pin-${idx}`,
+              html: `<div style="position: relative; width: 22px; height: 22px; display: flex; align-items: center; justify-content: center; cursor: pointer;">
+                <div style="position: absolute; width: 22px; height: 22px; border-radius: 50%; background: ${isHighlighted ? primaryColor : "rgba(255,255,255,0.2)"}; opacity: 0.5; ${isHighlighted ? "animation: coralPulse 1.5s infinite;" : ""}"></div>
+                <div style="width: 14px; height: 14px; border-radius: 50%; background: ${isHighlighted ? primaryColor : "#ffffff"}; border: 2px solid ${primaryColor}; box-shadow: 0 2px 6px rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; color: ${isHighlighted ? "#fff" : "#1c1917"}; font-size: 8px; font-weight: 800;">
+                  ${step.step_number || idx + 1}
                 </div>
-              `);
-            }
-          }
+              </div>`,
+              iconSize: [22, 22],
+              iconAnchor: [11, 11]
+            });
+
+            const marker = L_instance.marker(pt, { icon: waypointIcon }).addTo(map);
+            marker.bindPopup(`
+              <div style="font-family: inherit; font-size: 12px; color: #1c1917; padding: 3px; max-width: 220px;">
+                <div style="font-size: 10px; font-weight: 800; color: #e11d48; text-transform: uppercase;">Step ${step.step_number || idx + 1} &bull; ${step.mode}</div>
+                <div style="font-weight: 700; margin-top: 2px; font-size: 12px;">${step.instruction}</div>
+                <div style="color: #78716c; font-size: 11px; margin-top: 2px;">${step.duration_min} mins ${step.distance_km > 0 ? `&bull; ${step.distance_km} km` : ""}</div>
+              </div>
+            `);
+
+            marker.on("click", () => {
+              if (onSelectStep) onSelectStep(idx);
+            });
+
+            markers.push(marker);
+          });
+
+          waypointMarkersRef.current = markers;
         }
 
-        // Fit bounds to route
-        const bounds = L.latLngBounds(routePoints);
+        // 5. Fit bounds to route
+        const bounds = L_instance.latLngBounds(routePoints);
         map.fitBounds(bounds, {
           padding: [50, 50],
           maxZoom: 16
@@ -225,8 +340,129 @@ export const InteractiveMap: React.FC<InteractiveMapProps> = ({
     return () => {
       isMounted = false;
     };
-  }, [origin, destination, selectedMode, coordinates, polyline, steps, mapStyle]);
+  }, [
+    origin,
+    destination,
+    selectedMode,
+    coordinates,
+    polyline,
+    steps,
+    mapStyle,
+    activeCartoKey,
+    getRoutePoints,
+    oLat,
+    oLng,
+    dLat,
+    dLng,
+    primaryColor,
+    onSelectStep
+  ]);
 
+  // Handle Step Highlight Fly-To
+  useEffect(() => {
+    if (
+      highlightedStepIndex !== null &&
+      highlightedStepIndex !== undefined &&
+      mapInstanceRef.current &&
+      leafletRef.current
+    ) {
+      const routePoints = getRoutePoints();
+      const stepCount = steps?.length || 1;
+      const frac = highlightedStepIndex / Math.max(1, stepCount - 1);
+      const ptIdx = Math.min(routePoints.length - 1, Math.floor(routePoints.length * frac));
+      const pt = routePoints[ptIdx];
+
+      if (pt) {
+        mapInstanceRef.current.flyTo(pt, 14, {
+          animate: true,
+          duration: 0.8
+        });
+
+        // Open popup of matching waypoint if available
+        const marker = waypointMarkersRef.current[highlightedStepIndex];
+        if (marker) {
+          marker.openPopup();
+        }
+      }
+    }
+  }, [highlightedStepIndex, steps, getRoutePoints]);
+
+  // Vehicle Simulation Engine along Corridor
+  useEffect(() => {
+    let animId: any;
+    if (isSimulating && mapInstanceRef.current && leafletRef.current) {
+      const L_instance = leafletRef.current;
+      const map = mapInstanceRef.current;
+      const routePoints = getRoutePoints();
+
+      // Create vehicle marker if not existing
+      if (!vehicleMarkerRef.current && routePoints.length > 0) {
+        const vehicleIcon = L_instance.divIcon({
+          className: "vehicle-simulator-icon",
+          html: `<div style="position: relative; width: 34px; height: 34px; display: flex; align-items: center; justify-content: center; cursor: pointer;">
+            <div style="position: absolute; width: 34px; height: 34px; border-radius: 50%; background: ${primaryColor}; opacity: 0.4; animation: coralPulse 1s infinite;"></div>
+            <div style="width: 26px; height: 26px; border-radius: 50%; background: #1c1917; border: 2.5px solid ${primaryColor}; box-shadow: 0 4px 14px rgba(0,0,0,0.8); display: flex; align-items: center; justify-content: center; font-size: 13px;">
+              ${vehicleEmoji}
+            </div>
+          </div>`,
+          iconSize: [34, 34],
+          iconAnchor: [17, 17]
+        });
+
+        const vMarker = L_instance.marker(routePoints[0], {
+          icon: vehicleIcon,
+          zIndexOffset: 1000
+        }).addTo(map);
+
+        vMarker.bindPopup(`
+          <div style="font-family: inherit; font-size: 11px; font-weight: 700; color: #1c1917; padding: 2px;">
+            <span>${vehicleEmoji} Live Transit Simulator &bull; ${selectedMode}</span>
+          </div>
+        `);
+
+        vehicleMarkerRef.current = vMarker;
+      }
+
+      // Interval animation loop
+      const interval = setInterval(() => {
+        setSimProgress((prev) => {
+          const next = prev >= 100 ? 0 : prev + 1.25;
+
+          // Interpolate point along route
+          const totalPoints = routePoints.length;
+          const exactIndex = ((next / 100) * (totalPoints - 1));
+          const idxLow = Math.floor(exactIndex);
+          const idxHigh = Math.min(totalPoints - 1, Math.ceil(exactIndex));
+          const factor = exactIndex - idxLow;
+
+          const p1 = routePoints[idxLow];
+          const p2 = routePoints[idxHigh];
+
+          if (p1 && p2 && vehicleMarkerRef.current) {
+            const curLat = p1[0] + (p2[0] - p1[0]) * factor;
+            const curLng = p1[1] + (p2[1] - p1[1]) * factor;
+            vehicleMarkerRef.current.setLatLng([curLat, curLng]);
+          }
+
+          // Randomize minor realistic speed fluctuation
+          setCurrentSpeed(Math.floor(38 + Math.sin(next / 5) * 14));
+
+          return next;
+        });
+      }, 100);
+
+      return () => {
+        clearInterval(interval);
+      };
+    } else {
+      if (vehicleMarkerRef.current && mapInstanceRef.current) {
+        mapInstanceRef.current.removeLayer(vehicleMarkerRef.current);
+        vehicleMarkerRef.current = null;
+      }
+    }
+  }, [isSimulating, getRoutePoints, primaryColor, vehicleEmoji, selectedMode]);
+
+  // Controls
   const handleZoomIn = () => {
     if (mapInstanceRef.current) mapInstanceRef.current.zoomIn();
   };
@@ -236,35 +472,48 @@ export const InteractiveMap: React.FC<InteractiveMapProps> = ({
   };
 
   const handleRecenter = () => {
-    if (mapInstanceRef.current) {
-      if (coordinates && coordinates.length > 1) {
-        import("leaflet").then((L) => {
-          mapInstanceRef.current.fitBounds(L.latLngBounds(coordinates), { padding: [50, 50] });
-        });
-      } else {
-        mapInstanceRef.current.setView([oLat, oLng], 12);
-      }
+    if (mapInstanceRef.current && leafletRef.current) {
+      const routePoints = getRoutePoints();
+      const bounds = leafletRef.current.latLngBounds(routePoints);
+      mapInstanceRef.current.fitBounds(bounds, {
+        padding: [50, 50],
+        maxZoom: 16
+      });
     }
   };
 
-  const toggleMapStyle = () => {
-    setMapStyle((prev) => (prev === "dark" ? "voyager" : "dark"));
+  // Google Maps navigation external link
+  const openExternalNavigation = () => {
+    const navMode =
+      selectedMode === "TRAIN" || selectedMode === "METRO" || selectedMode === "BUS"
+        ? "transit"
+        : selectedMode === "BIKE" || selectedMode === "MOTORCYCLE_PERSONAL"
+        ? "two-wheeler"
+        : "driving";
+    const url = `https://www.google.com/maps/dir/?api=1&origin=${oLat},${oLng}&destination=${dLat},${dLng}&travelmode=${navMode}`;
+    window.open(url, "_blank");
   };
 
   return (
-    <div className="w-full h-full relative rounded-[28px] overflow-hidden border border-white/10 bg-[#1a1615] shadow-2xl">
+    <div
+      className={`relative rounded-[28px] overflow-hidden border border-white/10 bg-[#161312] shadow-2xl transition-all duration-300 ${
+        isFullscreen
+          ? "fixed inset-3 sm:inset-6 z-50 rounded-[32px] ring-2 ring-rose-500/50 shadow-black/90"
+          : "w-full h-full min-h-[440px]"
+      }`}
+    >
       {/* Map Canvas */}
       {!mapError ? (
-        <div ref={mapContainerRef} className="w-full h-full min-h-[380px] lg:min-h-full z-0" />
+        <div ref={mapContainerRef} className="w-full h-full min-h-[440px] z-0" />
       ) : (
         /* Spatial Corridor Fallback Diagram */
-        <div className="w-full h-full min-h-[380px] flex flex-col items-center justify-center p-8 bg-[#1e1918] text-center">
+        <div className="w-full h-full min-h-[440px] flex flex-col items-center justify-center p-8 bg-[#1e1918] text-center">
           <div className="w-14 h-14 rounded-full bg-white/10 border border-white/10 flex items-center justify-center mb-3">
             <Compass className="w-6 h-6 text-rose-400" />
           </div>
           <h3 className="text-sm font-bold text-white mb-1">Spatial Corridor Active</h3>
           <p className="text-xs text-stone-400 max-w-sm mb-4">
-            Route between {origin?.displayName || "Origin"} and {destination?.displayName || "Destination"} computed via Google Routes API.
+            Corridor between {origin?.displayName || "Origin"} and {destination?.displayName || "Destination"} initialized.
           </p>
 
           <div className="flex items-center gap-3 text-xs font-semibold">
@@ -281,54 +530,181 @@ export const InteractiveMap: React.FC<InteractiveMapProps> = ({
         </div>
       )}
 
-      {/* Floating Spatial Controls Overlay */}
-      <div className="absolute top-4 right-4 z-20 flex flex-col gap-2">
-        {/* Active Mode Pill */}
-        <div className="bg-stone-900/80 backdrop-blur-xl border border-white/15 px-3.5 py-1.5 rounded-full text-xs font-bold text-stone-200 flex items-center gap-2 shadow-xl">
-          <span className="w-2 h-2 rounded-full bg-rose-400 animate-pulse" />
-          <span className="tracking-wide uppercase text-[10px] text-rose-300 font-mono">
-            {selectedMode} CORRIDOR
-          </span>
+      {/* 1. TOP HEADER OVERLAY: STATUS, TITLE & TILE STYLE SWITCHER */}
+      <div className="absolute top-3.5 left-3.5 right-3.5 z-20 flex flex-wrap items-center justify-between gap-2 pointer-events-none">
+        
+        {/* Left Live Badge */}
+        <div className="flex items-center gap-2 pointer-events-auto">
+          <div className="bg-stone-900/85 backdrop-blur-xl border border-white/15 px-3 py-1.5 rounded-full text-xs font-bold text-white flex items-center gap-2 shadow-xl">
+            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+            <span className="tracking-wide uppercase text-[10px] text-emerald-300 font-mono">
+              LIVE CARTO MAP
+            </span>
+            <span className="text-stone-500 text-[10px]">&bull;</span>
+            <span className="text-[11px] text-stone-200 truncate max-w-[140px] sm:max-w-none">
+              {journeyTitle || `${selectedMode} Active Corridor`}
+            </span>
+          </div>
+
+          {/* Quick Distance / Duration Pill */}
+          {(distanceKm !== undefined || durationMin !== undefined) && (
+            <div className="hidden md:flex items-center gap-2 bg-black/60 backdrop-blur-md border border-white/10 px-2.5 py-1.5 rounded-full text-[11px] text-stone-300 font-medium">
+              {distanceKm !== undefined && <span>{distanceKm} km</span>}
+              {distanceKm !== undefined && durationMin !== undefined && <span className="text-stone-600">&bull;</span>}
+              {durationMin !== undefined && <span>{durationMin} mins</span>}
+            </div>
+          )}
         </div>
 
-        {/* VisionOS Glass Controls */}
-        <div className="flex flex-col rounded-2xl bg-stone-900/80 backdrop-blur-2xl border border-white/15 shadow-xl overflow-hidden divide-y divide-white/10">
+        {/* Right Action Controls */}
+        <div className="flex items-center gap-1.5 pointer-events-auto">
+          
+          {/* Map Style Pills (Night / Streets / Light) */}
+          <div className="bg-stone-900/85 backdrop-blur-xl border border-white/15 p-1 rounded-full flex items-center gap-1 shadow-xl">
+            <button
+              onClick={() => setMapStyle("dark")}
+              title="Cyber Dark Spatial Basemap"
+              className={`px-2.5 py-1 rounded-full text-[11px] font-bold flex items-center gap-1 transition-all cursor-pointer ${
+                mapStyle === "dark"
+                  ? "bg-rose-500/90 text-white shadow-sm"
+                  : "text-stone-400 hover:text-stone-200"
+              }`}
+            >
+              <Moon className="w-3 h-3" />
+              <span className="hidden sm:inline">Dark</span>
+            </button>
+
+            <button
+              onClick={() => setMapStyle("voyager")}
+              title="Detailed Streets & Rail Basemap"
+              className={`px-2.5 py-1 rounded-full text-[11px] font-bold flex items-center gap-1 transition-all cursor-pointer ${
+                mapStyle === "voyager"
+                  ? "bg-amber-500/90 text-white shadow-sm"
+                  : "text-stone-400 hover:text-stone-200"
+              }`}
+            >
+              <MapIcon className="w-3 h-3" />
+              <span className="hidden sm:inline">Streets</span>
+            </button>
+
+            <button
+              onClick={() => setMapStyle("positron")}
+              title="Clean Daylight Basemap"
+              className={`px-2.5 py-1 rounded-full text-[11px] font-bold flex items-center gap-1 transition-all cursor-pointer ${
+                mapStyle === "positron"
+                  ? "bg-white text-stone-900 shadow-sm"
+                  : "text-stone-400 hover:text-stone-200"
+              }`}
+            >
+              <Sun className="w-3 h-3" />
+              <span className="hidden sm:inline">Light</span>
+            </button>
+          </div>
+
+          {/* Fullscreen Expand / Collapse */}
+          <button
+            onClick={() => setIsFullscreen(!isFullscreen)}
+            title={isFullscreen ? "Exit Fullscreen" : "Expand to Fullscreen"}
+            className="p-2 rounded-full bg-stone-900/85 hover:bg-stone-800 backdrop-blur-xl border border-white/15 text-stone-300 hover:text-white transition-all shadow-xl cursor-pointer"
+          >
+            {isFullscreen ? <Minimize2 className="w-4 h-4 text-rose-400" /> : <Maximize2 className="w-4 h-4" />}
+          </button>
+        </div>
+      </div>
+
+      {/* 2. FLOATING RIGHT CONTROL COLUMN (Zoom, Fit, Simulator, Navigation) */}
+      <div className="absolute right-3.5 bottom-14 z-20 flex flex-col gap-2">
+        
+        {/* Vehicle Tracker Simulator Button */}
+        <button
+          onClick={() => setIsSimulating(!isSimulating)}
+          title={isSimulating ? "Pause Live Vehicle Tracking" : "Start Live Vehicle Simulator"}
+          className={`p-2.5 rounded-2xl backdrop-blur-xl border transition-all shadow-2xl flex items-center justify-center cursor-pointer ${
+            isSimulating
+              ? "bg-rose-600 text-white border-rose-400 ring-2 ring-rose-400/50"
+              : "bg-stone-900/85 hover:bg-stone-800 border-white/15 text-stone-300 hover:text-white"
+          }`}
+        >
+          {isSimulating ? <Pause className="w-4 h-4 animate-pulse" /> : <Play className="w-4 h-4" />}
+        </button>
+
+        {/* Fit Bounds */}
+        <button
+          onClick={handleRecenter}
+          title="Recenter & Fit Corridor"
+          className="p-2.5 rounded-2xl bg-stone-900/85 hover:bg-stone-800 backdrop-blur-xl border border-white/15 text-stone-300 hover:text-white transition-all shadow-xl cursor-pointer"
+        >
+          <RotateCcw className="w-4 h-4" />
+        </button>
+
+        {/* Zoom Controls */}
+        <div className="flex flex-col rounded-2xl bg-stone-900/85 backdrop-blur-xl border border-white/15 shadow-xl overflow-hidden divide-y divide-white/10">
           <button
             onClick={handleZoomIn}
-            title="Zoom in"
-            className="p-2.5 text-stone-400 hover:text-white hover:bg-white/10 transition-colors"
+            title="Zoom In"
+            className="p-2.5 text-stone-300 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
           >
             <ZoomIn className="w-4 h-4" />
           </button>
           <button
             onClick={handleZoomOut}
-            title="Zoom out"
-            className="p-2.5 text-stone-400 hover:text-white hover:bg-white/10 transition-colors"
+            title="Zoom Out"
+            className="p-2.5 text-stone-300 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
           >
             <ZoomOut className="w-4 h-4" />
           </button>
-          <button
-            onClick={handleRecenter}
-            title="Fit to route"
-            className="p-2.5 text-stone-400 hover:text-white hover:bg-white/10 transition-colors"
-          >
-            <Maximize2 className="w-4 h-4" />
-          </button>
-          <button
-            onClick={toggleMapStyle}
-            title={mapStyle === "dark" ? "Switch to light map" : "Switch to dark spatial map"}
-            className="p-2.5 text-stone-400 hover:text-white hover:bg-white/10 transition-colors"
-          >
-            <Layers className="w-4 h-4" />
-          </button>
         </div>
+
+        {/* Open in Google Maps Navigation */}
+        <button
+          onClick={openExternalNavigation}
+          title="Start Turn-by-Turn GPS Navigation"
+          className="p-2.5 rounded-2xl bg-gradient-to-tr from-rose-600 to-amber-600 hover:from-rose-500 hover:to-amber-500 text-white border border-rose-400/40 shadow-xl transition-all cursor-pointer hover:scale-105"
+        >
+          <Navigation className="w-4 h-4" />
+        </button>
       </div>
 
-      {/* Geographic Coordinates Pill */}
-      <div className="absolute bottom-3 left-3 z-20 hidden sm:flex items-center gap-2 bg-stone-900/80 backdrop-blur-md border border-white/10 px-3 py-1 rounded-full text-[10px] text-stone-400 font-mono">
-        <span>{oLat.toFixed(3)}°N, {oLng.toFixed(3)}°E</span>
-        <span>➔</span>
-        <span>{dLat.toFixed(3)}°N, {dLng.toFixed(3)}°E</span>
+      {/* 3. BOTTOM TELEMETRY BAR: SIMULATOR SCRUBBER OR COORDINATES */}
+      <div className="absolute bottom-3 left-3.5 right-3.5 z-20 flex items-center justify-between gap-2 pointer-events-none">
+        
+        {/* Simulator Info Card when active */}
+        {isSimulating ? (
+          <div className="pointer-events-auto bg-stone-900/90 backdrop-blur-2xl border border-rose-500/40 px-3.5 py-1.5 rounded-2xl flex items-center gap-3 text-xs text-white shadow-2xl">
+            <span className="text-base">{vehicleEmoji}</span>
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="font-extrabold text-rose-300 text-[11px] uppercase tracking-wide">
+                  Live Tracking
+                </span>
+                <span className="text-[10px] text-stone-400">&bull; {currentSpeed} km/h</span>
+                <span className="text-[10px] font-mono text-emerald-400">{Math.round(simProgress)}%</span>
+              </div>
+              {/* Progress Mini Bar */}
+              <div className="w-28 sm:w-36 h-1.5 bg-white/15 rounded-full overflow-hidden mt-1">
+                <div
+                  className="h-full bg-gradient-to-r from-orange-500 via-rose-500 to-amber-400 transition-all duration-100"
+                  style={{ width: `${simProgress}%` }}
+                />
+              </div>
+            </div>
+          </div>
+        ) : (
+          /* Static Origin -> Destination Lat/Lng Stamp */
+          <div className="hidden sm:flex items-center gap-2 bg-stone-900/85 backdrop-blur-md border border-white/10 px-3 py-1 rounded-full text-[10px] text-stone-400 font-mono shadow-lg">
+            <MapPin className="w-3 h-3 text-orange-400" />
+            <span>{oLat.toFixed(3)}°N, {oLng.toFixed(3)}°E</span>
+            <span>➔</span>
+            <MapPin className="w-3 h-3 text-rose-400" />
+            <span>{dLat.toFixed(3)}°N, {dLng.toFixed(3)}°E</span>
+          </div>
+        )}
+
+        {/* API Key Connection Status Pill */}
+        <div className="pointer-events-auto bg-stone-900/85 backdrop-blur-md border border-white/10 px-3 py-1 rounded-full text-[10px] text-stone-400 flex items-center gap-1.5 shadow-lg">
+          <ShieldCheck className="w-3 h-3 text-emerald-400" />
+          <span>CARTO Basemaps Key Verified</span>
+        </div>
       </div>
     </div>
   );

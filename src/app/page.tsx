@@ -842,29 +842,37 @@ export default function HomePage() {
 
             {/* Steps */}
             {selectedOption?.steps && selectedOption.steps.length > 0 && (
-              <div className="space-y-2 max-h-64 overflow-y-auto pr-1">
-                {selectedOption.steps.map((st, i) => (
-                  <div
-                    key={i}
-                    onClick={() => setHighlightedStepIndex(i)}
-                    className={`p-2.5 rounded-2xl border transition-all cursor-pointer flex items-start gap-2.5 ${
-                      highlightedStepIndex === i
-                        ? "bg-rose-950/60 border-rose-500/80 text-white"
-                        : "bg-white/5 border-white/10 hover:bg-white/10 text-stone-300"
-                    }`}
-                  >
-                    <div className="w-5 h-5 rounded-full bg-rose-500/20 text-rose-300 border border-rose-500/40 flex items-center justify-center text-[10px] font-bold shrink-0">
-                      {st.step_number}
+              <>
+                <div className="mb-2 flex items-center justify-between text-[11px] text-stone-400">
+                  <span className="font-semibold text-stone-300">Turn-by-Turn Waypoints:</span>
+                  <span className="text-[10px] text-rose-300 bg-rose-500/10 px-2 py-0.5 rounded-full border border-rose-500/20 font-medium">
+                    Tap step to focus live map
+                  </span>
+                </div>
+                <div className="space-y-2 max-h-64 overflow-y-auto pr-1">
+                  {selectedOption.steps.map((st, i) => (
+                    <div
+                      key={i}
+                      onClick={() => setHighlightedStepIndex(i)}
+                      className={`p-2.5 rounded-2xl border transition-all cursor-pointer flex items-start gap-2.5 ${
+                        highlightedStepIndex === i
+                          ? "bg-rose-950/60 border-rose-500/80 text-white shadow-md ring-1 ring-rose-500/40"
+                          : "bg-white/5 border-white/10 hover:bg-white/10 text-stone-300"
+                      }`}
+                    >
+                      <div className="w-5 h-5 rounded-full bg-rose-500/20 text-rose-300 border border-rose-500/40 flex items-center justify-center text-[10px] font-bold shrink-0">
+                        {st.step_number}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xs font-semibold">{st.instruction}</p>
+                        <p className="text-[10px] text-stone-400 mt-0.5">
+                          {st.mode} &bull; {st.duration_min} mins {st.distance_km > 0 && `&bull; ${st.distance_km} km`}
+                        </p>
+                      </div>
                     </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-xs font-semibold">{st.instruction}</p>
-                      <p className="text-[10px] text-stone-400 mt-0.5">
-                        {st.mode} &bull; {st.duration_min} mins {st.distance_km > 0 && `&bull; ${st.distance_km} km`}
-                      </p>
-                    </div>
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+              </>
             )}
             {/* Book Online Ticket Button */}
             {selectedOption && (
@@ -889,16 +897,20 @@ export default function HomePage() {
         </div>
 
         {/* Right Spatial Map Canvas */}
-        <div className="lg:col-span-7 h-[380px] lg:h-auto min-h-[380px] rounded-[28px] overflow-hidden shadow-2xl">
+        <div className="lg:col-span-7 h-[460px] lg:h-auto min-h-[460px] rounded-[28px] overflow-hidden shadow-2xl">
           <InteractiveMap
             origin={sourceLoc}
             destination={destLoc}
             selectedMode={selectedOption?.transport_mode || selectedOption?.mode || "BUS"}
+            journeyTitle={selectedOption?.title}
+            distanceKm={selectedOption?.route_distance_km ?? selectedOption?.distance_km}
+            durationMin={selectedOption?.total_duration_minutes ?? selectedOption?.duration_min}
             coordinates={selectedOption?.coordinates}
             polyline={selectedOption?.polyline}
             steps={selectedOption?.steps}
             highlightedStepIndex={highlightedStepIndex}
             onSelectStep={setHighlightedStepIndex}
+            cartoApiKey="cb1_4jk9_1_bee4b9e4f372e1ce3f9056e0"
           />
         </div>
       </div>
