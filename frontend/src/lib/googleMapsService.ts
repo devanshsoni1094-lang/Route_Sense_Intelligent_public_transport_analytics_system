@@ -105,17 +105,20 @@ export function mapGoogleTypesToCategory(types: string[]): PlaceCategory {
   if (!types || types.length === 0) return "address";
   const t = types.map((s) => s.toLowerCase());
 
-  if (t.some((x) => x.includes("railway") || x.includes("train_station") || x === "transit_station")) {
-    return "railway_station";
-  }
   if (t.some((x) => x.includes("subway") || x.includes("metro") || x.includes("light_rail"))) {
     return "metro_station";
   }
   if (t.some((x) => x.includes("bus_station") || x.includes("bus_stop"))) {
     return "bus_terminal";
   }
+  if (t.some((x) => x.includes("railway") || x.includes("train_station"))) {
+    return "railway_station";
+  }
   if (t.some((x) => x.includes("airport") || x.includes("aerodrome"))) {
     return "airport";
+  }
+  if (t.some((x) => x === "transit_station")) {
+    return "railway_station";
   }
   if (
     t.some(
