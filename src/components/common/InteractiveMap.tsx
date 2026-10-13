@@ -101,23 +101,23 @@ export const InteractiveMap: React.FC<InteractiveMapProps> = ({
           maxZoom: 19
         }).addTo(map);
 
-        // Custom pulsing origin beacon (Emerald)
+        // Custom pulsing origin beacon (Warm Coral / Orange)
         const startIcon = L.divIcon({
           className: "custom-beacon-start",
           html: `<div style="position: relative; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center;">
-            <div style="position: absolute; width: 24px; height: 24px; border-radius: 50%; background: rgba(16, 185, 129, 0.35); animation: beaconPulse 2s infinite;"></div>
-            <div style="width: 14px; height: 14px; border-radius: 50%; background: #10b981; border: 2.5px solid #ffffff; box-shadow: 0 0 10px rgba(16, 185, 129, 0.8);"></div>
+            <div style="position: absolute; width: 24px; height: 24px; border-radius: 50%; background: rgba(249, 115, 22, 0.4); animation: orangePulse 2s infinite;"></div>
+            <div style="width: 14px; height: 14px; border-radius: 50%; background: #f97316; border: 2.5px solid #ffffff; box-shadow: 0 0 10px rgba(249, 115, 22, 0.9);"></div>
           </div>`,
           iconSize: [24, 24],
           iconAnchor: [12, 12]
         });
 
-        // Custom pulsing destination beacon (Rose)
+        // Custom pulsing destination beacon (Rose / Coral)
         const endIcon = L.divIcon({
           className: "custom-beacon-end",
           html: `<div style="position: relative; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center;">
-            <div style="position: absolute; width: 24px; height: 24px; border-radius: 50%; background: rgba(244, 63, 94, 0.35); animation: rosePulse 2s infinite;"></div>
-            <div style="width: 14px; height: 14px; border-radius: 50%; background: #f43f5e; border: 2.5px solid #ffffff; box-shadow: 0 0 10px rgba(244, 63, 94, 0.8);"></div>
+            <div style="position: absolute; width: 24px; height: 24px; border-radius: 50%; background: rgba(244, 63, 94, 0.4); animation: coralPulse 2s infinite;"></div>
+            <div style="width: 14px; height: 14px; border-radius: 50%; background: #f43f5e; border: 2.5px solid #ffffff; box-shadow: 0 0 10px rgba(244, 63, 94, 0.9);"></div>
           </div>`,
           iconSize: [24, 24],
           iconAnchor: [12, 12]
@@ -125,40 +125,39 @@ export const InteractiveMap: React.FC<InteractiveMapProps> = ({
 
         const startMarker = L.marker([oLat, oLng], { icon: startIcon }).addTo(map);
         startMarker.bindPopup(`
-          <div style="font-family: inherit; font-size: 12px; color: #0f172a; line-height: 1.4;">
-            <div style="font-weight: 700; color: #059669; text-transform: uppercase; font-size: 10px; letter-spacing: 0.5px;">Departure Point</div>
+          <div style="font-family: inherit; font-size: 12px; color: #1c1917; line-height: 1.4;">
+            <div style="font-weight: 700; color: #ea580c; text-transform: uppercase; font-size: 10px; letter-spacing: 0.5px;">Departure Point</div>
             <div style="font-weight: 600; font-size: 13px;">${origin?.displayName || "Origin"}</div>
-            <div style="color: #64748b; font-size: 11px;">${origin?.formattedAddress || "India"}</div>
+            <div style="color: #78716c; font-size: 11px;">${origin?.formattedAddress || "India"}</div>
           </div>
         `);
 
         const endMarker = L.marker([dLat, dLng], { icon: endIcon }).addTo(map);
         endMarker.bindPopup(`
-          <div style="font-family: inherit; font-size: 12px; color: #0f172a; line-height: 1.4;">
+          <div style="font-family: inherit; font-size: 12px; color: #1c1917; line-height: 1.4;">
             <div style="font-weight: 700; color: #e11d48; text-transform: uppercase; font-size: 10px; letter-spacing: 0.5px;">Destination Point</div>
             <div style="font-weight: 600; font-size: 13px;">${destination?.displayName || "Destination"}</div>
-            <div style="color: #64748b; font-size: 11px;">${destination?.formattedAddress || "India"}</div>
+            <div style="color: #78716c; font-size: 11px;">${destination?.formattedAddress || "India"}</div>
           </div>
         `);
 
-        // Mode-specific route colors
+        // Mode-specific route colors with VisionOS coral/rose palette
         const modeColorMap: Record<string, string> = {
-          TRAIN: "#a855f7",
-          METRO: "#8b5cf6",
-          BUS: "#0284c7",
-          CAB: "#f59e0b",
-          AUTO: "#d97706",
+          TRAIN: "#f43f5e",
+          METRO: "#ec4899",
+          BUS: "#f97316",
+          CAB: "#fbbf24",
+          AUTO: "#f59e0b",
           BIKE: "#10b981",
-          CAR_PERSONAL: "#38bdf8",
-          MOTORCYCLE_PERSONAL: "#14b8a6"
+          CAR_PERSONAL: "#fb7185",
+          MOTORCYCLE_PERSONAL: "#fb923c"
         };
-        const primaryColor = modeColorMap[selectedMode] || "#06b6d4";
+        const primaryColor = modeColorMap[selectedMode] || "#f43f5e";
 
         let routePoints: [number, number][] = [];
         if (coordinates && coordinates.length > 1) {
           routePoints = coordinates;
         } else {
-          // Curvature estimate connecting points
           const midLat = (oLat + dLat) / 2 + 0.003;
           const midLng = (oLng + dLng) / 2 - 0.003;
           routePoints = [
@@ -168,17 +167,17 @@ export const InteractiveMap: React.FC<InteractiveMapProps> = ({
           ];
         }
 
-        // Draw glowing corridor: Background glow polyline
+        // Draw glowing corridor: Outer diffused warm glow
         L.polyline(routePoints, {
           color: primaryColor,
           weight: 9,
-          opacity: 0.25,
+          opacity: 0.3,
           lineJoin: "round",
           lineCap: "round"
         }).addTo(map);
 
         // Draw crisp core polyline
-        const corePolyline = L.polyline(routePoints, {
+        L.polyline(routePoints, {
           color: primaryColor,
           weight: 4.5,
           opacity: 0.95,
@@ -203,7 +202,7 @@ export const InteractiveMap: React.FC<InteractiveMapProps> = ({
               }).addTo(map);
 
               stopMarker.bindPopup(`
-                <div style="font-size: 11px; font-weight: 600; color: #0f172a;">
+                <div style="font-size: 11px; font-weight: 600; color: #1c1917;">
                   Step ${i}: ${steps[i - 1]?.instruction || "Transfer Station"}
                 </div>
               `);
@@ -253,28 +252,28 @@ export const InteractiveMap: React.FC<InteractiveMapProps> = ({
   };
 
   return (
-    <div className="w-full h-full relative rounded-3xl overflow-hidden border border-slate-800/80 bg-[#090e17] shadow-2xl">
+    <div className="w-full h-full relative rounded-[28px] overflow-hidden border border-white/10 bg-[#1a1615] shadow-2xl">
       {/* Map Canvas */}
       {!mapError ? (
-        <div ref={mapContainerRef} className="w-full h-full min-h-[420px] lg:min-h-full z-0" />
+        <div ref={mapContainerRef} className="w-full h-full min-h-[380px] lg:min-h-full z-0" />
       ) : (
-        /* Spatial Corridor Fallback Diagram (Section 4.3 graceful degradation) */
-        <div className="w-full h-full min-h-[420px] flex flex-col items-center justify-center p-8 bg-[#090d16] text-center">
-          <div className="w-16 h-16 rounded-2xl bg-cyan-950/60 border border-cyan-800/80 flex items-center justify-center mb-4">
-            <Compass className="w-8 h-8 text-cyan-400" />
+        /* Spatial Corridor Fallback Diagram */
+        <div className="w-full h-full min-h-[380px] flex flex-col items-center justify-center p-8 bg-[#1e1918] text-center">
+          <div className="w-14 h-14 rounded-full bg-white/10 border border-white/10 flex items-center justify-center mb-3">
+            <Compass className="w-6 h-6 text-rose-400" />
           </div>
-          <h3 className="text-base font-bold text-white mb-1">Spatial Corridor Active</h3>
-          <p className="text-xs text-slate-400 max-w-sm mb-6">
-            Detailed journey route between {origin?.displayName || "Origin"} and {destination?.displayName || "Destination"} calculated via Google Routes API.
+          <h3 className="text-sm font-bold text-white mb-1">Spatial Corridor Active</h3>
+          <p className="text-xs text-stone-400 max-w-sm mb-4">
+            Route between {origin?.displayName || "Origin"} and {destination?.displayName || "Destination"} computed via Google Routes API.
           </p>
 
-          <div className="flex items-center gap-4 text-xs font-semibold">
-            <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-emerald-950/60 border border-emerald-800 text-emerald-300">
-              <span className="w-2 h-2 rounded-full bg-emerald-400" />
+          <div className="flex items-center gap-3 text-xs font-semibold">
+            <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-orange-950/60 border border-orange-800 text-orange-300">
+              <span className="w-2 h-2 rounded-full bg-orange-400" />
               <span>{origin?.displayName || "Start"}</span>
             </div>
-            <span className="text-slate-600">┈┈┈ ➔ ┈┈┈</span>
-            <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-rose-950/60 border border-rose-800 text-rose-300">
+            <span className="text-stone-600">┈┈┈ ➔ ┈┈┈</span>
+            <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-rose-950/60 border border-rose-800 text-rose-300">
               <span className="w-2 h-2 rounded-full bg-rose-400" />
               <span>{destination?.displayName || "End"}</span>
             </div>
@@ -285,51 +284,51 @@ export const InteractiveMap: React.FC<InteractiveMapProps> = ({
       {/* Floating Spatial Controls Overlay */}
       <div className="absolute top-4 right-4 z-20 flex flex-col gap-2">
         {/* Active Mode Pill */}
-        <div className="bg-[#090d16]/90 backdrop-blur-md border border-slate-800/90 px-3.5 py-1.5 rounded-xl text-xs font-bold text-slate-200 flex items-center gap-2 shadow-xl">
-          <span className="w-2 h-2 rounded-full bg-cyan-400 animate-pulse" />
-          <span className="tracking-wide uppercase text-[11px] text-cyan-400 font-mono">
+        <div className="bg-stone-900/80 backdrop-blur-xl border border-white/15 px-3.5 py-1.5 rounded-full text-xs font-bold text-stone-200 flex items-center gap-2 shadow-xl">
+          <span className="w-2 h-2 rounded-full bg-rose-400 animate-pulse" />
+          <span className="tracking-wide uppercase text-[10px] text-rose-300 font-mono">
             {selectedMode} CORRIDOR
           </span>
         </div>
 
-        {/* Spatial Zoom & Layer Buttons */}
-        <div className="flex flex-col rounded-xl bg-[#090d16]/90 backdrop-blur-md border border-slate-800/90 shadow-xl overflow-hidden">
+        {/* VisionOS Glass Controls */}
+        <div className="flex flex-col rounded-2xl bg-stone-900/80 backdrop-blur-2xl border border-white/15 shadow-xl overflow-hidden divide-y divide-white/10">
           <button
             onClick={handleZoomIn}
             title="Zoom in"
-            className="p-2.5 text-slate-400 hover:text-cyan-300 hover:bg-slate-800/60 transition-colors border-b border-slate-800/60"
+            className="p-2.5 text-stone-400 hover:text-white hover:bg-white/10 transition-colors"
           >
             <ZoomIn className="w-4 h-4" />
           </button>
           <button
             onClick={handleZoomOut}
             title="Zoom out"
-            className="p-2.5 text-slate-400 hover:text-cyan-300 hover:bg-slate-800/60 transition-colors border-b border-slate-800/60"
+            className="p-2.5 text-stone-400 hover:text-white hover:bg-white/10 transition-colors"
           >
             <ZoomOut className="w-4 h-4" />
           </button>
           <button
             onClick={handleRecenter}
             title="Fit to route"
-            className="p-2.5 text-slate-400 hover:text-cyan-300 hover:bg-slate-800/60 transition-colors border-b border-slate-800/60"
+            className="p-2.5 text-stone-400 hover:text-white hover:bg-white/10 transition-colors"
           >
             <Maximize2 className="w-4 h-4" />
           </button>
           <button
             onClick={toggleMapStyle}
             title={mapStyle === "dark" ? "Switch to light map" : "Switch to dark spatial map"}
-            className="p-2.5 text-slate-400 hover:text-cyan-300 hover:bg-slate-800/60 transition-colors"
+            className="p-2.5 text-stone-400 hover:text-white hover:bg-white/10 transition-colors"
           >
             <Layers className="w-4 h-4" />
           </button>
         </div>
       </div>
 
-      {/* Subtle Geographic Coordinates Pill at bottom left */}
-      <div className="absolute bottom-4 left-4 z-20 hidden sm:flex items-center gap-3 bg-[#090d16]/80 backdrop-blur-md border border-slate-800/80 px-3 py-1 rounded-lg text-[10px] text-slate-400 font-mono">
-        <span>IN-GEO: {oLat.toFixed(4)}°N, {oLng.toFixed(4)}°E</span>
+      {/* Geographic Coordinates Pill */}
+      <div className="absolute bottom-3 left-3 z-20 hidden sm:flex items-center gap-2 bg-stone-900/80 backdrop-blur-md border border-white/10 px-3 py-1 rounded-full text-[10px] text-stone-400 font-mono">
+        <span>{oLat.toFixed(3)}°N, {oLng.toFixed(3)}°E</span>
         <span>➔</span>
-        <span>{dLat.toFixed(4)}°N, {dLng.toFixed(4)}°E</span>
+        <span>{dLat.toFixed(3)}°N, {dLng.toFixed(3)}°E</span>
       </div>
     </div>
   );

@@ -5,105 +5,129 @@
 @tailwind utilities;
 
 :root {
-  --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-  --color-spatial-bg: #070b14;
-  --color-spatial-card: rgba(15, 23, 42, 0.75);
-  --color-spatial-border: rgba(51, 65, 85, 0.7);
-  --color-cyan-glow: #06b6d4;
-  --color-teal-glow: #14b8a6;
+  --font-sans: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  --vision-glass-bg: rgba(34, 30, 29, 0.78);
+  --vision-glass-border: rgba(255, 255, 255, 0.14);
 }
 
 body {
   font-family: var(--font-sans);
-  background-color: #070b14;
-  color: #f1f5f9;
+  background-color: #141110;
+  color: #f5f5f4;
   overflow-x: hidden;
+  background-image: 
+    radial-gradient(circle at 85% 15%, rgba(251, 146, 60, 0.15), transparent 40%),
+    radial-gradient(circle at 15% 85%, rgba(244, 63, 94, 0.12), transparent 45%),
+    radial-gradient(circle at 50% 50%, rgba(41, 37, 36, 0.4), transparent 60%);
+  background-attachment: fixed;
 }
 
-/* Custom Spatial Scrollbars */
+/* VisionOS Glass Surface Utility */
+.vision-glass-surface {
+  background: rgba(34, 30, 29, 0.76);
+  backdrop-filter: blur(40px) saturate(180%);
+  -webkit-backdrop-filter: blur(40px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.13);
+  box-shadow: 0 30px 80px -10px rgba(0, 0, 0, 0.7), 0 0 1px 1px rgba(255, 255, 255, 0.1) inset;
+}
+
+.vision-card {
+  background: rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3), 0 0 1px 1px rgba(255, 255, 255, 0.06) inset;
+}
+
+.vision-card:hover {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.18);
+}
+
+.vision-pill {
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.vision-pill:hover {
+  background: rgba(255, 255, 255, 0.16);
+  border-color: rgba(255, 255, 255, 0.22);
+}
+
+/* Custom VisionOS Scrollbars */
 ::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+  width: 5px;
+  height: 5px;
 }
 ::-webkit-scrollbar-track {
-  background: #0b1120;
+  background: rgba(28, 25, 23, 0.5);
 }
 ::-webkit-scrollbar-thumb {
-  background: #1e293b;
-  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 9999px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: #334155;
+  background: rgba(255, 255, 255, 0.35);
 }
 
-/* Leaflet Container Spatial Styling */
+/* Leaflet Container Spatial Dark Theme */
 .leaflet-container {
   width: 100%;
   height: 100%;
-  background: #090e17 !important;
+  background: #191615 !important;
   z-index: 10;
   font-family: inherit;
+  border-radius: 1.5rem;
 }
 
 .leaflet-tile {
-  filter: brightness(0.9) contrast(1.1);
+  filter: brightness(0.85) contrast(1.15) hue-rotate(-10deg);
 }
 
 .leaflet-control-zoom {
-  border: 1px solid rgba(51, 65, 85, 0.8) !important;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5) !important;
-  border-radius: 0.75rem !important;
+  border: 1px solid rgba(255, 255, 255, 0.15) !important;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6) !important;
+  border-radius: 1rem !important;
   overflow: hidden;
+  background: rgba(28, 25, 23, 0.85) !important;
+  backdrop-filter: blur(20px) !important;
 }
 
 .leaflet-control-zoom a {
-  background-color: #0f172a !important;
-  color: #94a3b8 !important;
-  border-bottom: 1px solid rgba(51, 65, 85, 0.6) !important;
+  background-color: rgba(34, 30, 29, 0.85) !important;
+  color: #e7e5e4 !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1) !important;
 }
 
 .leaflet-control-zoom a:hover {
-  background-color: #1e293b !important;
-  color: #38bdf8 !important;
+  background-color: rgba(244, 63, 94, 0.8) !important;
+  color: #ffffff !important;
 }
 
 .leaflet-control-attribution {
-  background: rgba(15, 23, 42, 0.8) !important;
-  color: #64748b !important;
+  background: rgba(28, 25, 23, 0.75) !important;
+  color: #a8a29e !important;
   font-size: 10px !important;
-  backdrop-filter: blur(4px);
-  border-radius: 4px;
-  padding: 2px 6px !important;
+  backdrop-filter: blur(8px);
+  border-radius: 6px;
+  padding: 2px 8px !important;
 }
 
 .leaflet-control-attribution a {
-  color: #38bdf8 !important;
+  color: #fb7185 !important;
 }
 
-/* Custom Marker Animations */
-@keyframes beaconPulse {
-  0% {
-    transform: scale(0.95);
-    box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7);
-  }
-  70% {
-    transform: scale(1.1);
-    box-shadow: 0 0 0 10px rgba(16, 185, 129, 0);
-  }
-  100% {
-    transform: scale(0.95);
-    box-shadow: 0 0 0 0 rgba(16, 185, 129, 0);
-  }
-}
-
-@keyframes rosePulse {
+/* Beacon Pulse Animations */
+@keyframes coralPulse {
   0% {
     transform: scale(0.95);
     box-shadow: 0 0 0 0 rgba(244, 63, 94, 0.7);
   }
   70% {
     transform: scale(1.1);
-    box-shadow: 0 0 0 10px rgba(244, 63, 94, 0);
+    box-shadow: 0 0 0 12px rgba(244, 63, 94, 0);
   }
   100% {
     transform: scale(0.95);
@@ -111,10 +135,25 @@ body {
   }
 }
 
-.marker-beacon-start {
-  animation: beaconPulse 2s infinite ease-in-out;
+@keyframes orangePulse {
+  0% {
+    transform: scale(0.95);
+    box-shadow: 0 0 0 0 rgba(249, 115, 22, 0.7);
+  }
+  70% {
+    transform: scale(1.1);
+    box-shadow: 0 0 0 12px rgba(249, 115, 22, 0);
+  }
+  100% {
+    transform: scale(0.95);
+    box-shadow: 0 0 0 0 rgba(249, 115, 22, 0);
+  }
 }
 
-.marker-beacon-end {
-  animation: rosePulse 2s infinite ease-in-out;
+.marker-beacon-coral {
+  animation: coralPulse 2s infinite ease-in-out;
+}
+
+.marker-beacon-orange {
+  animation: orangePulse 2s infinite ease-in-out;
 }

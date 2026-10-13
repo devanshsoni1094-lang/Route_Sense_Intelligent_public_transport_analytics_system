@@ -8,19 +8,31 @@ module.exports = {
   theme: {
     extend: {
       colors: {
-        brand: {
-          50: '#f0f7ff',
-          100: '#e0effe',
-          500: '#0284c7',
-          600: '#0265d2',
-          700: '#0369a1',
-          900: '#0c4a6e',
+        vision: {
+          bg: '#120f0e',
+          glass: 'rgba(34, 30, 29, 0.78)',
+          glassSolid: '#221e1d',
+          glassBorder: 'rgba(255, 255, 255, 0.14)',
+          coral: '#f43f5e',
+          coralLight: '#fb7185',
+          coralOrange: '#f97316',
+          peach: '#fce7df',
+          stoneDark: '#1a1615',
+          stoneMuted: '#a8a29e',
         },
-        navy: {
-          800: '#1e293b',
-          900: '#0f172a',
-          950: '#090d16',
+        brand: {
+          50: '#fdf4f3',
+          100: '#fce7df',
+          500: '#f43f5e',
+          600: '#e11d48',
+          700: '#be123c',
+          900: '#881337',
         }
+      },
+      boxShadow: {
+        'vision-window': '0 30px 90px -10px rgba(0, 0, 0, 0.75), 0 0 1px 1px rgba(255, 255, 255, 0.12) inset',
+        'vision-dock': '0 20px 50px rgba(0, 0, 0, 0.6), 0 0 1px 1px rgba(255, 255, 255, 0.15) inset',
+        'vision-card': '0 10px 30px rgba(0, 0, 0, 0.35), 0 0 1px 1px rgba(255, 255, 255, 0.08) inset',
       }
     },
   },
