@@ -179,3 +179,146 @@ body {
     text-shadow: none !important;
   }
 }
+
+/* Animated Traveling Boy Scenery Keyframes */
+@keyframes travelerSway {
+  0%, 100% {
+    transform: translateY(0px) rotate(0deg);
+  }
+  30% {
+    transform: translateY(-3px) rotate(-0.5deg);
+  }
+  65% {
+    transform: translateY(1.5px) rotate(0.4deg);
+  }
+  85% {
+    transform: translateY(-2px) rotate(-0.2deg);
+  }
+}
+
+@keyframes scarfBreeze {
+  0%, 100% {
+    transform: rotate(0deg) skewX(0deg);
+  }
+  50% {
+    transform: rotate(7deg) skewX(4deg) translateY(-1px);
+  }
+}
+
+@keyframes hairBreeze {
+  0%, 100% {
+    transform: rotate(0deg);
+  }
+  50% {
+    transform: rotate(5deg) translateY(-1px);
+  }
+}
+
+@keyframes cloudDriftSlow {
+  0% {
+    transform: translateX(110%);
+  }
+  100% {
+    transform: translateX(-120%);
+  }
+}
+
+@keyframes cloudDriftFast {
+  0% {
+    transform: translateX(130%);
+  }
+  100% {
+    transform: translateX(-140%);
+  }
+}
+
+@keyframes treeZip {
+  0% {
+    transform: translateX(120%);
+    opacity: 0.2;
+  }
+  30% {
+    opacity: 0.85;
+  }
+  80% {
+    opacity: 0.85;
+  }
+  100% {
+    transform: translateX(-130%);
+    opacity: 0;
+  }
+}
+
+@keyframes trackStripes {
+  0% {
+    stroke-dashoffset: 0;
+  }
+  100% {
+    stroke-dashoffset: -32;
+  }
+}
+
+@keyframes birdsGlide {
+  0% {
+    transform: translate(-40px, 15px) scale(0.75);
+    opacity: 0;
+  }
+  20% {
+    opacity: 0.85;
+  }
+  80% {
+    opacity: 0.85;
+  }
+  100% {
+    transform: translate(280px, -20px) scale(0.9);
+    opacity: 0;
+  }
+}
+
+@keyframes quoteProgressBar {
+  0% {
+    width: 0%;
+  }
+  100% {
+    width: 100%;
+  }
+}
+
+.anim-traveler-sway {
+  animation: travelerSway 3s ease-in-out infinite;
+}
+
+.anim-scarf-breeze {
+  transform-origin: top left;
+  animation: scarfBreeze 2.2s ease-in-out infinite;
+}
+
+.anim-hair-breeze {
+  transform-origin: bottom left;
+  animation: hairBreeze 2s ease-in-out infinite;
+}
+
+.anim-cloud-slow {
+  animation: cloudDriftSlow 18s linear infinite;
+}
+
+.anim-cloud-fast {
+  animation: cloudDriftFast 11s linear infinite;
+}
+
+.anim-tree-zip-1 {
+  animation: treeZip 3.4s linear infinite;
+}
+
+.anim-tree-zip-2 {
+  animation: treeZip 3.4s linear infinite 1.7s;
+}
+
+.anim-track-scroll {
+  animation: trackStripes 0.6s linear infinite;
+}
+
+.anim-birds-glide {
+  animation: birdsGlide 8s linear infinite;
+}
+

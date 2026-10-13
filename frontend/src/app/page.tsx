@@ -31,6 +31,7 @@ import { fetchApi } from "@/lib/api";
 import { LocationAutocomplete } from "@/components/common/LocationAutocomplete";
 import { InteractiveMap } from "@/components/common/InteractiveMap";
 import { BookingModal } from "@/components/booking/BookingModal";
+import { TravelHeroSpotlight } from "@/components/home/TravelHeroSpotlight";
 
 // Popular Indian Corridors
 const POPULAR_INDIAN_HUBS = [
@@ -450,47 +451,16 @@ export default function HomePage() {
       {/* 2. HERO ROW: SPOTLIGHT CARD + TOP OPERATORS (Matching uploaded image hero section) */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
         
-        {/* Left Hero Spotlight Card (Matching "Tupac Shakur Live Concert" card) */}
-        <div className="lg:col-span-8 rounded-[30px] bg-gradient-to-r from-purple-800 via-rose-600 to-amber-500 p-6 sm:p-7 text-white relative overflow-hidden shadow-2xl flex flex-col justify-between min-h-[240px]">
-          {/* Background Ambient Glow & Shapes */}
-          <div className="absolute -top-12 -right-12 w-64 h-64 rounded-full bg-amber-400/20 blur-3xl pointer-events-none" />
-          <div className="absolute -bottom-12 -left-12 w-64 h-64 rounded-full bg-purple-900/40 blur-3xl pointer-events-none" />
-
-          {/* Top Tag & Header */}
-          <div className="relative z-10">
-            <span className="text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-full bg-black/30 backdrop-blur-md border border-white/20 text-rose-200 inline-block mb-3">
-              RECOMMENDED PASS
-            </span>
-            <h3 className="text-2xl sm:text-4xl font-black uppercase tracking-tight text-white drop-shadow-md">
-              {recommendedOption?.title || "MUMBAI SUBURBAN EXPRESS"}
-            </h3>
-            <p className="text-xs sm:text-sm text-rose-100 max-w-md mt-1 drop-shadow-sm font-medium">
-              {recommendedOption?.operator || "Central Railway"} &bull; {recommendedOption?.total_duration_minutes ?? recommendedOption?.duration_min ?? 28} mins &bull; {recommendedOption?.route_distance_km ?? recommendedOption?.distance_km ?? 10.3} km
-            </p>
-          </div>
-
-          {/* Bottom Action Button (Deep Rose/Burgundy Pill matching "Get the pass") */}
-          <div className="relative z-10 mt-6 flex items-center justify-between">
-            <button
-              onClick={() => {
-                if (recommendedOption) {
-                  setSelectedOption(recommendedOption);
-                  setBookingJourney(recommendedOption);
-                  setIsBookingOpen(true);
-                }
-              }}
-              className="px-5 py-2.5 rounded-full bg-[#881337] hover:bg-[#9f1239] text-white font-extrabold text-xs tracking-wide shadow-lg shadow-black/40 hover:scale-105 transition-all cursor-pointer flex items-center gap-1.5"
-            >
-              <Ticket className="w-3.5 h-3.5 text-rose-200" />
-              <span>Get the pass &bull; ₹{recommendedOption?.quoted_price_inr ?? recommendedOption?.fare_inr ?? 15}</span>
-            </button>
-
-            <div className="hidden sm:flex items-center gap-2 text-xs font-semibold text-rose-100 bg-black/20 px-3 py-1.5 rounded-full backdrop-blur-md">
-              <Leaf className="w-3.5 h-3.5 text-emerald-300" />
-              <span>{recommendedOption?.co2_emissions_g ?? 70}g CO₂</span>
-            </div>
-          </div>
-        </div>
+        {/* Left Hero Spotlight Card: Animated Traveling Boy Theme & 5s Quotes Carousel */}
+        <TravelHeroSpotlight
+          recommendedOption={recommendedOption}
+          routeOptions={routeOptions}
+          onGetPass={(opt) => {
+            setSelectedOption(opt);
+            setBookingJourney(opt);
+            setIsBookingOpen(true);
+          }}
+        />
 
         {/* Right Card: Top Transit Operators (Matching "Top Artist" section) */}
         <div className="lg:col-span-4 rounded-[30px] vision-card p-5 flex flex-col justify-between shadow-xl">
