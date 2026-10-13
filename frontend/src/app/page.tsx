@@ -982,7 +982,9 @@ export default function HomePage() {
                         className="px-3 py-1 rounded-full bg-[#3d1519] hover:bg-rose-500 border border-rose-500/40 text-rose-200 hover:text-white font-black text-xs transition-all shadow-sm cursor-pointer flex items-center gap-1 active:scale-95"
                       >
                         <span>₹{opt.quoted_price_inr ?? opt.fare_inr}</span>
-                        <span className="text-[10px] text-rose-300 font-medium">&bull; Book</span>
+                        <span className="text-[10px] text-rose-300 font-medium">
+                          &bull; {opt.transport_mode === "BUS" || opt.transport_mode === "TRAIN" ? "Book Ticket" : "Book Pass"}
+                        </span>
                       </button>
                     </div>
                   </div>
@@ -1071,7 +1073,7 @@ export default function HomePage() {
                 className="w-full mt-4 py-2.5 rounded-full bg-gradient-to-r from-rose-600 via-pink-600 to-amber-600 hover:from-rose-500 hover:to-amber-500 text-white font-bold text-xs tracking-wider uppercase shadow-lg shadow-rose-950/50 hover:scale-[1.02] active:scale-95 transition-all flex items-center justify-center gap-2 cursor-pointer"
               >
                 <Ticket className="w-4 h-4 text-white" />
-                <span>Book Mumbai Transit Ticket &bull; ₹{selectedOption.quoted_price_inr ?? selectedOption.fare_inr ?? 0}</span>
+                <span>Book Bus &amp; Train E-Ticket &bull; Pay via QR Code</span>
               </button>
             )}
           </div>
