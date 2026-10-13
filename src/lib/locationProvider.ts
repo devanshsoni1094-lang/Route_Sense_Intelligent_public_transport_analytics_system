@@ -236,11 +236,14 @@ function createAlgorithmicIndianPlace(query: string): ResolvedLocation {
 export async function resolveLocation(queryOrPlaceId: string): Promise<ResolvedLocation> {
   const clean = queryOrPlaceId.trim();
 
-  // 1. Check Indian Transit Database match
+  // 1. Check Indian Transit Database match (Exact ID, display name, city, or prefix)
   const found = INDIAN_TRANSIT_DATABASE.find(
     (item) =>
       item.providerPlaceId.toLowerCase() === clean.toLowerCase() ||
-      item.displayName.toLowerCase() === clean.toLowerCase()
+      item.displayName.toLowerCase() === clean.toLowerCase() ||
+      item.city.toLowerCase() === clean.toLowerCase() ||
+      item.displayName.toLowerCase().startsWith(clean.toLowerCase()) ||
+      clean.toLowerCase().includes(item.city.toLowerCase())
   );
 
   if (found) return found;

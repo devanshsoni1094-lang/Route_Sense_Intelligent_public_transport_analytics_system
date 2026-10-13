@@ -157,3 +157,25 @@ body {
 .marker-beacon-orange {
   animation: orangePulse 2s infinite ease-in-out;
 }
+
+/* Print Styles for Digital Transit Pass */
+@media print {
+  body {
+    background: #ffffff !important;
+    color: #000000 !important;
+  }
+  .print\:hidden {
+    display: none !important;
+  }
+  #printable-ticket {
+    background: #ffffff !important;
+    color: #000000 !important;
+    border: 2px solid #000000 !important;
+    box-shadow: none !important;
+    padding: 20px !important;
+  }
+  #printable-ticket * {
+    color: #000000 !important;
+    text-shadow: none !important;
+  }
+}

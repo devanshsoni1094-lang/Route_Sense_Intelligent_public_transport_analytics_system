@@ -30,6 +30,7 @@ import { MultiModalOption, ResolvedLocation, RouteStep } from "@/types";
 import { fetchApi } from "@/lib/api";
 import { LocationAutocomplete } from "@/components/common/LocationAutocomplete";
 import { InteractiveMap } from "@/components/common/InteractiveMap";
+import { BookingModal } from "@/components/booking/BookingModal";
 
 // Popular Indian Corridors
 const POPULAR_INDIAN_HUBS = [
@@ -194,6 +195,10 @@ export default function HomePage() {
   const [routeOptions, setRouteOptions] = useState<MultiModalOption[]>([]);
   const [selectedOption, setSelectedOption] = useState<MultiModalOption | null>(null);
   const [highlightedStepIndex, setHighlightedStepIndex] = useState<number | null>(null);
+
+  // Booking Modal State
+  const [isBookingOpen, setIsBookingOpen] = useState(false);
+  const [bookingJourney, setBookingJourney] = useState<MultiModalOption | null>(null);
 
   // Category Filter Pill (matching image's top pills & bottom dock)
   const [activeCategory, setActiveCategory] = useState<"ALL" | "MUMBAI" | "CABS" | "AUTOS" | "BIKES" | "EXPRESS" | "PERSONAL">("ALL");
@@ -470,13 +475,14 @@ export default function HomePage() {
               onClick={() => {
                 if (recommendedOption) {
                   setSelectedOption(recommendedOption);
-                  const el = document.getElementById("journey-passes");
-                  if (el) el.scrollIntoView({ behavior: "smooth" });
+                  setBookingJourney(recommendedOption);
+                  setIsBookingOpen(true);
                 }
               }}
-              className="px-5 py-2.5 rounded-full bg-[#881337] hover:bg-[#9f1239] text-white font-extrabold text-xs tracking-wide shadow-lg shadow-black/40 hover:scale-105 transition-all cursor-pointer"
+              className="px-5 py-2.5 rounded-full bg-[#881337] hover:bg-[#9f1239] text-white font-extrabold text-xs tracking-wide shadow-lg shadow-black/40 hover:scale-105 transition-all cursor-pointer flex items-center gap-1.5"
             >
-              Get the pass &bull; ₹{recommendedOption?.quoted_price_inr ?? recommendedOption?.fare_inr ?? 15}
+              <Ticket className="w-3.5 h-3.5 text-rose-200" />
+              <span>Get the pass &bull; ₹{recommendedOption?.quoted_price_inr ?? recommendedOption?.fare_inr ?? 15}</span>
             </button>
 
             <div className="hidden sm:flex items-center gap-2 text-xs font-semibold text-rose-100 bg-black/20 px-3 py-1.5 rounded-full backdrop-blur-md">
@@ -779,9 +785,19 @@ export default function HomePage() {
                       </span>
 
                       {/* Price Pill Button */}
-                      <div className="px-3 py-1 rounded-full bg-[#3d1519] hover:bg-rose-500 border border-rose-500/40 text-rose-200 hover:text-white font-black text-xs transition-colors shadow-sm">
-                        ₹{opt.quoted_price_inr ?? opt.fare_inr}
-                      </div>
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setSelectedOption(opt);
+                          setBookingJourney(opt);
+                          setIsBookingOpen(true);
+                        }}
+                        className="px-3 py-1 rounded-full bg-[#3d1519] hover:bg-rose-500 border border-rose-500/40 text-rose-200 hover:text-white font-black text-xs transition-colors shadow-sm cursor-pointer flex items-center gap-1"
+                      >
+                        <span>₹{opt.quoted_price_inr ?? opt.fare_inr}</span>
+                        <span className="text-[10px] text-rose-300 font-medium">&bull; Book</span>
+                      </button>
                     </div>
                   </div>
                 </div>
@@ -850,6 +866,20 @@ export default function HomePage() {
                 ))}
               </div>
             )}
+            {/* Book Online Ticket Button */}
+            {selectedOption && (
+              <button
+                type="button"
+                onClick={() => {
+                  setBookingJourney(selectedOption);
+                  setIsBookingOpen(true);
+                }}
+                className="w-full mt-4 py-2.5 rounded-full bg-gradient-to-r from-rose-600 via-pink-600 to-amber-600 hover:from-rose-500 hover:to-amber-500 text-white font-bold text-xs tracking-wider uppercase shadow-lg shadow-rose-950/50 hover:scale-[1.02] transition-all flex items-center justify-center gap-2 cursor-pointer"
+              >
+                <Ticket className="w-4 h-4 text-white" />
+                <span>Book Online Ticket &bull; ₹{selectedOption.quoted_price_inr ?? selectedOption.fare_inr ?? 0}</span>
+              </button>
+            )}
           </div>
 
           {/* Provenance note */}
@@ -902,6 +932,16 @@ export default function HomePage() {
           })}
         </div>
       </div>
+
+      {/* 7. ONLINE BOOKING & E-TICKET MODAL */}
+      <BookingModal
+        isOpen={isBookingOpen}
+        onClose={() => setIsBookingOpen(false)}
+        journey={bookingJourney || selectedOption}
+        originLocation={sourceLoc}
+        destLocation={destLoc}
+        passengersCount={passengers}
+      />
 
     </div>
   );
