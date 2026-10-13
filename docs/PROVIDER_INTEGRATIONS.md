@@ -62,6 +62,6 @@ flowchart TD
 
 ## 4. Credentials & Security
 
-- **Server-Side Restriction**: Private API keys (`GOOGLE_MAPS_API_KEY`) are accessed strictly within Next.js server route handlers (`src/app/api/`) and never exposed in client bundles.
-- **Client Maps Key**: If using client-side Maps JavaScript API, a separate key (`NEXT_PUBLIC_GOOGLE_MAPS_API_KEY`) restricted by HTTP referrer is recommended in Google Cloud Console.
-- **Billing & Quota Safeguards**: If no key is configured, or if API quotas are exhausted, the platform automatically switches to the Indian Transit Database and Haversine circuity engine with clear user disclosures.
+- **Server-Side Restriction**: Private API keys (`GOOGLE_MAPS_SERVER_API_KEY`) are accessed strictly within Next.js server route handlers (`src/app/api/`) and are never exposed in client bundles.
+- **Client Browser Key**: If using client-side Maps JavaScript API, a separate browser key (`NEXT_PUBLIC_GOOGLE_MAPS_BROWSER_KEY`) restricted by HTTP referrer is configured in Google Cloud Console.
+- **Billing & Quota Safeguards**: If no key is configured, or if API quotas are exhausted, the platform automatically switches to the Indian Transit Database and Haversine circuity engine with clear, transparent user disclosures.

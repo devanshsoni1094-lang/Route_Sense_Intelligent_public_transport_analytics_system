@@ -1,10 +1,12 @@
 import { ResolvedLocation, PlaceCategory } from "@/types";
 import { INDIAN_TRANSIT_DATABASE } from "./indianTransitDb";
 import {
-  getGoogleMapsApiKey,
+  getGoogleMapsServerKey,
   googlePlacesAutocomplete,
   googleResolvePlaceDetails,
-  googleGeocodeQuery
+  googleGeocodeQuery,
+  sanitizeLogMessage,
+  GoogleApiStatusInfo
 } from "./googleMapsService";
 
 function hashString(str: string): number {
@@ -16,21 +18,36 @@ function hashString(str: string): number {
   return hash;
 }
 
-export async function searchIndianLocations(query: string): Promise<ResolvedLocation[]> {
-  const q = query.trim().toLowerCase();
-  if (!q || q.length < 2) return [];
+export interface SearchLocationsResponse {
+  results: ResolvedLocation[];
+  provider: "google" | "indian_transit_db" | "nominatim";
+  statusInfo?: GoogleApiStatusInfo;
+}
 
-  const apiKey = getGoogleMapsApiKey();
+export async function searchIndianLocations(query: string): Promise<SearchLocationsResponse> {
+  const q = query.trim().toLowerCase();
+  if (!q || q.length < 2) {
+    return { results: [], provider: "indian_transit_db" };
+  }
+
+  const apiKey = getGoogleMapsServerKey();
 
   // Priority 1: Real Google Places Autocomplete API (New / Classic)
   if (apiKey) {
     try {
-      const googleResults = await googlePlacesAutocomplete(query);
+      const { results: googleResults, statusInfo } = await googlePlacesAutocomplete(query);
       if (googleResults.length > 0) {
-        return googleResults;
+        return {
+          results: googleResults,
+          provider: "google",
+          statusInfo
+        };
       }
-    } catch (err) {
-      console.warn("Google Places Autocomplete failed, falling back to Indian Transit DB", err);
+      if (statusInfo && statusInfo.status !== "OK") {
+        console.warn(sanitizeLogMessage(`Google Places Autocomplete status: ${statusInfo.message}`));
+      }
+    } catch (err: any) {
+      console.warn(sanitizeLogMessage(`Google Places Autocomplete failed: ${err?.message || err}`));
     }
   }
 
@@ -50,7 +67,17 @@ export async function searchIndianLocations(query: string): Promise<ResolvedLoca
   }
 
   if (localMatches.length > 0) {
-    return rankLocations(q, localMatches);
+    return {
+      results: rankLocations(q, localMatches),
+      provider: "indian_transit_db",
+      statusInfo: !apiKey
+        ? {
+            isConfigured: false,
+            status: "KEY_MISSING",
+            message: "GOOGLE_MAPS_SERVER_API_KEY is not configured in .env.local"
+          }
+        : undefined
+    };
   }
 
   // Priority 3: Remote Geocoding API (OpenStreetMap Nominatim fallback)
@@ -58,7 +85,7 @@ export async function searchIndianLocations(query: string): Promise<ResolvedLoca
     const endpoint = `https://nominatim.openstreetmap.org/search?countrycodes=in&format=json&addressdetails=1&limit=8&q=${encodeURIComponent(
       query
     )}`;
-    
+
     const res = await fetch(endpoint, {
       headers: {
         "Accept-Language": "en-IN,en;q=0.9",
@@ -74,17 +101,29 @@ export async function searchIndianLocations(query: string): Promise<ResolvedLoca
           const city = addr.city || addr.town || addr.village || addr.county || "India";
           const state = addr.state || "India";
           const locality = addr.suburb || addr.neighbourhood || addr.residential || city;
-          
+
           let category: PlaceCategory = "address";
           const typeStr = (item.type || "").toLowerCase();
 
-          if (typeStr.includes("railway") || typeStr.includes("station") || item.display_name.toLowerCase().includes("station")) {
+          if (
+            typeStr.includes("railway") ||
+            typeStr.includes("station") ||
+            item.display_name.toLowerCase().includes("station")
+          ) {
             category = "railway_station";
-          } else if (typeStr.includes("subway") || typeStr.includes("metro") || item.display_name.toLowerCase().includes("metro")) {
+          } else if (
+            typeStr.includes("subway") ||
+            typeStr.includes("metro") ||
+            item.display_name.toLowerCase().includes("metro")
+          ) {
             category = "metro_station";
           } else if (typeStr.includes("bus") || item.display_name.toLowerCase().includes("bus")) {
             category = "bus_terminal";
-          } else if (typeStr.includes("aerodrome") || typeStr.includes("airport") || item.display_name.toLowerCase().includes("airport")) {
+          } else if (
+            typeStr.includes("aerodrome") ||
+            typeStr.includes("airport") ||
+            item.display_name.toLowerCase().includes("airport")
+          ) {
             category = "airport";
           } else if (typeStr.includes("attraction")) {
             category = "landmark";
@@ -111,20 +150,40 @@ export async function searchIndianLocations(query: string): Promise<ResolvedLoca
           };
         });
 
-        return rankLocations(q, remoteResults);
+        return {
+          results: rankLocations(q, remoteResults),
+          provider: "nominatim",
+          statusInfo: !apiKey
+            ? {
+                isConfigured: false,
+                status: "KEY_MISSING",
+                message: "GOOGLE_MAPS_SERVER_API_KEY is not configured in .env.local"
+              }
+            : undefined
+        };
       }
     }
-  } catch (err) {
-    console.warn("Remote geocoding query failed, falling back to algorithmic Indian search", err);
+  } catch (err: any) {
+    console.warn(sanitizeLogMessage(`Remote geocoding query failed: ${err?.message || err}`));
   }
 
-  // Fallback dynamic place resolution for custom queries
-  return [createAlgorithmicIndianPlace(query)];
+  // Fallback place resolution for custom queries
+  return {
+    results: [createAlgorithmicIndianPlace(query)],
+    provider: "indian_transit_db",
+    statusInfo: !apiKey
+      ? {
+          isConfigured: false,
+          status: "KEY_MISSING",
+          message: "GOOGLE_MAPS_SERVER_API_KEY is not configured in .env.local"
+        }
+      : undefined
+  };
 }
 
 function rankLocations(query: string, items: ResolvedLocation[]): ResolvedLocation[] {
   const q = query.toLowerCase();
-  
+
   return [...items].sort((a, b) => {
     const aExact = a.displayName.toLowerCase().startsWith(q) ? 100 : 0;
     const bExact = b.displayName.toLowerCase().startsWith(q) ? 100 : 0;
@@ -154,7 +213,7 @@ function createAlgorithmicIndianPlace(query: string): ResolvedLocation {
   const lng = 73.0 + ((abs >> 3) % 120) / 10.0;
 
   return {
-    provider: getGoogleMapsApiKey() ? "google" : "indian_transit_db",
+    provider: getGoogleMapsServerKey() ? "google" : "indian_transit_db",
     providerPlaceId: `custom-in-${abs}`,
     displayName: capital,
     formattedAddress: `${capital}, India`,
@@ -165,7 +224,7 @@ function createAlgorithmicIndianPlace(query: string): ResolvedLocation {
     latitude: Math.round(lat * 10000) / 10000,
     longitude: Math.round(lng * 10000) / 10000,
     placeTypes: ["locality"],
-    dataSource: getGoogleMapsApiKey() ? "Google Places API" : "RouteSense Indian Location Index",
+    dataSource: getGoogleMapsServerKey() ? "Google Places API" : "RouteSense Indian Location Index",
     retrievedAt: new Date().toISOString(),
     secondaryAddress: `${capital} · India`
   };
@@ -186,7 +245,7 @@ export async function resolveLocation(queryOrPlaceId: string): Promise<ResolvedL
 
   if (found) return found;
 
-  const apiKey = getGoogleMapsApiKey();
+  const apiKey = getGoogleMapsServerKey();
 
   // 2. If Google Maps API is configured, resolve via Google Place Details or Geocoding
   if (apiKey) {
@@ -223,8 +282,8 @@ export async function resolveLocation(queryOrPlaceId: string): Promise<ResolvedL
           displayName: clean,
           formattedAddress: geo.formattedAddress,
           locality: clean,
-          city: "India",
-          state: "India",
+          city: geo.city || "India",
+          state: geo.state || "India",
           countryCode: "IN",
           latitude: geo.lat,
           longitude: geo.lng,
@@ -234,15 +293,15 @@ export async function resolveLocation(queryOrPlaceId: string): Promise<ResolvedL
           secondaryAddress: geo.formattedAddress
         };
       }
-    } catch (err) {
-      console.warn("Google resolve place details / geocoding failed", err);
+    } catch (err: any) {
+      console.warn(sanitizeLogMessage(`Google resolve place details / geocoding failed: ${err?.message || err}`));
     }
   }
 
   // 3. Fallback to location search results
-  const searchResults = await searchIndianLocations(clean);
-  if (searchResults.length > 0 && searchResults[0].latitude !== 0) {
-    return searchResults[0];
+  const searchResp = await searchIndianLocations(clean);
+  if (searchResp.results.length > 0 && searchResp.results[0].latitude !== 0) {
+    return searchResp.results[0];
   }
 
   return createAlgorithmicIndianPlace(clean);

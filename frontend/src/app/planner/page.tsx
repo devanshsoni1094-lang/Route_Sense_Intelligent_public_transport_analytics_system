@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   Bus,
   Train,
@@ -15,7 +15,10 @@ import {
   Loader2,
   Sparkles,
   MapPin,
-  CheckCircle2
+  CheckCircle2,
+  Info,
+  Clock,
+  Compass
 } from "lucide-react";
 import { MultiModalOption, ResolvedLocation } from "@/types";
 import { fetchApi } from "@/lib/api";
@@ -46,7 +49,7 @@ const POPULAR_INDIAN_JOURNEYS = [
       city: "Mumbai",
       state: "Maharashtra",
       countryCode: "IN",
-      latitude: 18.9400,
+      latitude: 18.94,
       longitude: 72.8353,
       placeTypes: ["railway_station", "landmark"],
       dataSource: "Central Railway",
@@ -77,7 +80,7 @@ const POPULAR_INDIAN_JOURNEYS = [
       state: "Karnataka",
       countryCode: "IN",
       latitude: 13.0359,
-      longitude: 77.5970,
+      longitude: 77.597,
       placeTypes: ["bus_terminal"],
       dataSource: "BMTC",
       retrievedAt: new Date().toISOString()
@@ -92,7 +95,7 @@ const POPULAR_INDIAN_JOURNEYS = [
       city: "New Delhi",
       state: "Delhi",
       countryCode: "IN",
-      latitude: 28.6430,
+      latitude: 28.643,
       longitude: 77.2194,
       placeTypes: ["railway_station"],
       dataSource: "Northern Railway",
@@ -128,12 +131,21 @@ export default function HomePage() {
   const [routeOptions, setRouteOptions] = useState<MultiModalOption[]>([]);
   const [selectedOption, setSelectedOption] = useState<MultiModalOption | null>(null);
 
+  const [gmapsStatus, setGmapsStatus] = useState<{
+    is_configured: boolean;
+    status: string;
+    message: string;
+  } | null>(null);
+  const [trafficStatusText, setTrafficStatusText] = useState<string | null>(null);
+
   const executeSearch = async (
     sLoc: ResolvedLocation | null = sourceLoc,
     dLoc: ResolvedLocation | null = destLoc,
     sText: string = sourceText,
     dText: string = destText
   ) => {
+    if (loading) return;
+
     setValidationError(null);
     setApiError(null);
 
@@ -156,25 +168,78 @@ export default function HomePage() {
 
     setLoading(true);
 
-    const originName = sLoc?.displayName || cleanSourceText;
-    const destName = dLoc?.displayName || cleanDestText;
+    let activeSourceLoc = sLoc;
+    let activeDestLoc = dLoc;
+
+    // Explicitly resolve origin if user typed without selecting autocomplete
+    if (!activeSourceLoc || activeSourceLoc.latitude === 0) {
+      try {
+        const res = await fetchApi<{ location: ResolvedLocation }>(
+          `/location/resolve?q=${encodeURIComponent(cleanSourceText)}`
+        );
+        if (res && res.location && res.location.latitude !== 0) {
+          activeSourceLoc = res.location;
+          setSourceLoc(activeSourceLoc);
+        }
+      } catch (err) {
+        console.warn("Could not resolve starting location", err);
+      }
+    }
+
+    // Explicitly resolve destination if user typed without selecting autocomplete
+    if (!activeDestLoc || activeDestLoc.latitude === 0) {
+      try {
+        const res = await fetchApi<{ location: ResolvedLocation }>(
+          `/location/resolve?q=${encodeURIComponent(cleanDestText)}`
+        );
+        if (res && res.location && res.location.latitude !== 0) {
+          activeDestLoc = res.location;
+          setDestLoc(activeDestLoc);
+        }
+      } catch (err) {
+        console.warn("Could not resolve destination location", err);
+      }
+    }
+
+    if (!activeSourceLoc) {
+      setValidationError("Please select a verified starting location from the suggestions.");
+      setLoading(false);
+      return;
+    }
+    if (!activeDestLoc) {
+      setValidationError("Please select a verified destination location from the suggestions.");
+      setLoading(false);
+      return;
+    }
+
+    const originName = activeSourceLoc.displayName || cleanSourceText;
+    const destName = activeDestLoc.displayName || cleanDestText;
 
     let url = `/planner/route?origin=${encodeURIComponent(originName)}&destination=${encodeURIComponent(destName)}`;
 
-    if (sLoc?.latitude && sLoc?.longitude) {
-      url += `&origin_lat=${sLoc.latitude}&origin_lng=${sLoc.longitude}`;
+    if (activeSourceLoc.latitude && activeSourceLoc.longitude) {
+      url += `&origin_lat=${activeSourceLoc.latitude}&origin_lng=${activeSourceLoc.longitude}`;
     }
-    if (dLoc?.latitude && dLoc?.longitude) {
-      url += `&dest_lat=${dLoc.latitude}&dest_lng=${dLoc.longitude}`;
+    if (activeDestLoc.latitude && activeDestLoc.longitude) {
+      url += `&dest_lat=${activeDestLoc.latitude}&dest_lng=${activeDestLoc.longitude}`;
     }
 
     try {
-      const res = await fetchApi<{ route_options: MultiModalOption[]; origin: ResolvedLocation; destination: ResolvedLocation }>(url);
+      const res = await fetchApi<{
+        route_options: MultiModalOption[];
+        origin: ResolvedLocation;
+        destination: ResolvedLocation;
+        google_maps_status?: { is_configured: boolean; status: string; message: string };
+        traffic_status?: string;
+      }>(url);
+
       if (res && res.route_options && res.route_options.length > 0) {
         setRouteOptions(res.route_options);
         setSelectedOption(res.route_options[0]);
         if (res.origin) setSourceLoc(res.origin);
         if (res.destination) setDestLoc(res.destination);
+        if (res.google_maps_status) setGmapsStatus(res.google_maps_status);
+        if (res.traffic_status) setTrafficStatusText(res.traffic_status);
       } else {
         setRouteOptions([]);
         setSelectedOption(null);
@@ -229,15 +294,41 @@ export default function HomePage() {
   const renderPriceBadge = (priceType?: string) => {
     switch (priceType) {
       case "LIVE_PROVIDER_QUOTE":
-        return <span className="bg-emerald-50 text-emerald-700 border border-emerald-200 text-[10px] font-bold px-2 py-0.5 rounded-md">LIVE PROVIDER QUOTE</span>;
+        return (
+          <span className="bg-emerald-50 text-emerald-700 border border-emerald-200 text-[10px] font-bold px-2 py-0.5 rounded-md">
+            LIVE PROVIDER QUOTE
+          </span>
+        );
       case "OFFICIAL_TARIFF":
-        return <span className="bg-sky-50 text-sky-700 border border-sky-200 text-[10px] font-bold px-2 py-0.5 rounded-md">OFFICIAL TARIFF</span>;
+        return (
+          <span className="bg-sky-50 text-sky-700 border border-sky-200 text-[10px] font-bold px-2 py-0.5 rounded-md">
+            OFFICIAL TARIFF
+          </span>
+        );
       case "API_TRANSIT_FARE":
-        return <span className="bg-purple-50 text-purple-700 border border-purple-200 text-[10px] font-bold px-2 py-0.5 rounded-md">API-RETURNED TRANSIT FARE</span>;
+        return (
+          <span className="bg-purple-50 text-purple-700 border border-purple-200 text-[10px] font-bold px-2 py-0.5 rounded-md">
+            API TRANSIT FARE (GOOGLE)
+          </span>
+        );
       case "ESTIMATED_OPERATING_COST":
-        return <span className="bg-amber-50 text-amber-700 border border-amber-200 text-[10px] font-bold px-2 py-0.5 rounded-md">ESTIMATED VEHICLE RUNNING COST</span>;
+        return (
+          <span className="bg-amber-50 text-amber-700 border border-amber-200 text-[10px] font-bold px-2 py-0.5 rounded-md">
+            ESTIMATED RUNNING COST
+          </span>
+        );
+      case "PRICE_UNAVAILABLE":
+        return (
+          <span className="bg-slate-100 text-slate-600 border border-slate-300 text-[10px] font-bold px-2 py-0.5 rounded-md">
+            FARE UNAVAILABLE
+          </span>
+        );
       default:
-        return <span className="bg-slate-100 text-slate-700 border border-slate-200 text-[10px] font-bold px-2 py-0.5 rounded-md">ESTIMATED FARE</span>;
+        return (
+          <span className="bg-slate-100 text-slate-700 border border-slate-200 text-[10px] font-bold px-2 py-0.5 rounded-md">
+            ESTIMATED FARE
+          </span>
+        );
     }
   };
 
@@ -247,21 +338,44 @@ export default function HomePage() {
       <div className="max-w-4xl mx-auto px-4 py-8 space-y-8">
         {/* Main Search Card - STRICT 2 INPUTS + 1 BUTTON */}
         <div className="bg-white border border-slate-200 rounded-3xl p-6 sm:p-8 shadow-sm space-y-6">
-          <div className="border-b border-slate-100 pb-3">
-            <h2 className="text-lg font-black text-slate-900">
-              Plan Your Journey
-            </h2>
-            <p className="text-xs text-slate-500">Search any city, area, address, landmark, or station in India</p>
+          <div className="border-b border-slate-100 pb-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+            <div>
+              <h2 className="text-lg font-black text-slate-900">Plan Your Journey</h2>
+              <p className="text-xs text-slate-500">
+                Search cities, areas, addresses, stations or landmarks across India
+              </p>
+            </div>
+
+            {/* Provider Connectivity Badge */}
+            {gmapsStatus && (
+              <div className="flex items-center gap-1.5 self-start sm:self-auto">
+                {gmapsStatus.is_configured ? (
+                  <span className="inline-flex items-center gap-1 text-[11px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 px-2.5 py-1 rounded-full">
+                    <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                    Google Maps Platform Connected
+                  </span>
+                ) : (
+                  <span
+                    className="inline-flex items-center gap-1 text-[11px] font-semibold bg-slate-100 text-slate-600 border border-slate-200 px-2.5 py-1 rounded-full"
+                    title={gmapsStatus.message}
+                  >
+                    <Info className="w-3 h-3 text-slate-400" />
+                    Indian Transit DB & Official Tariffs Active
+                  </span>
+                )}
+              </div>
+            )}
           </div>
 
           {/* Validation Error Banner */}
           {validationError && (
-            <div className="p-4 bg-rose-50 border border-rose-200 rounded-xl text-xs font-semibold text-rose-700 flex items-center gap-2">
+            <div className="p-3.5 bg-rose-50 border border-rose-200 rounded-2xl text-xs font-semibold text-rose-700 flex items-center gap-2.5 shadow-sm">
               <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
               <span>{validationError}</span>
             </div>
           )}
 
+          {/* Strict 2-Field Form */}
           <form
             onSubmit={(e) => {
               e.preventDefault();
@@ -312,7 +426,7 @@ export default function HomePage() {
 
             {/* Quick Shortcuts */}
             <div className="flex flex-wrap items-center gap-2 pt-1">
-              <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Popular Routes:</span>
+              <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Popular Corridors:</span>
               {POPULAR_INDIAN_JOURNEYS.map((j, idx) => (
                 <button
                   key={idx}
@@ -371,6 +485,17 @@ export default function HomePage() {
           </div>
         )}
 
+        {/* Traffic Status Indicator */}
+        {trafficStatusText && routeOptions.length > 0 && (
+          <div className="bg-sky-50 border border-sky-200 rounded-2xl px-4 py-2.5 flex items-center justify-between text-xs font-semibold text-sky-800">
+            <span className="flex items-center gap-2">
+              <Clock className="w-4 h-4 text-sky-600" />
+              <span>Route Traffic Condition: {trafficStatusText}</span>
+            </span>
+            <span className="text-[11px] text-sky-600 font-normal">Calculated via Google Routes API</span>
+          </div>
+        )}
+
         {/* Journey Results Section */}
         {routeOptions.length > 0 && (
           <div className="space-y-4">
@@ -379,15 +504,18 @@ export default function HomePage() {
                 <Sparkles className="w-4 h-4 text-amber-500" />
                 Available Journey Options ({routeOptions.length})
               </h3>
-              <span className="text-xs text-slate-500 font-medium">Real-World India Mobility Pricing</span>
+              <span className="text-xs text-slate-500 font-medium">Real-World India Mobility Comparison</span>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {routeOptions.map((opt, idx) => {
-                const isSelected = selectedOption?.mode === opt.mode || selectedOption?.transport_mode === opt.transport_mode;
+                const isSelected =
+                  selectedOption?.mode === opt.mode ||
+                  selectedOption?.transport_mode === opt.transport_mode ||
+                  selectedOption?.journey_id === opt.journey_id;
                 return (
                   <div
-                    key={idx}
+                    key={opt.journey_id || idx}
                     className={`bg-white border rounded-2xl p-5 shadow-sm transition-all space-y-4 relative ${
                       isSelected ? "border-sky-500 ring-2 ring-sky-100" : "border-slate-200 hover:border-slate-300"
                     }`}
@@ -419,31 +547,42 @@ export default function HomePage() {
 
                     <div className="grid grid-cols-3 gap-2 py-2 border-y border-slate-100 text-center">
                       <div>
-                        <span className="text-[11px] text-slate-400 block font-medium">Estimated Price</span>
-                        <span className="text-base font-black text-emerald-600 font-mono">₹{opt.fare_inr || opt.quoted_price_inr}</span>
+                        <span className="text-[11px] text-slate-400 block font-medium">Price</span>
+                        {opt.price_type === "PRICE_UNAVAILABLE" || (!opt.fare_inr && !opt.quoted_price_inr) ? (
+                          <span className="text-xs font-bold text-slate-500">Fare unavailable</span>
+                        ) : (
+                          <span className="text-base font-black text-emerald-600 font-mono">
+                            ₹{opt.fare_inr || opt.quoted_price_inr}
+                          </span>
+                        )}
                       </div>
                       <div>
                         <span className="text-[11px] text-slate-400 block font-medium">Travel Time</span>
-                        <span className="text-base font-black text-slate-800 font-mono">{opt.duration_min || opt.total_duration_minutes} mins</span>
+                        <span className="text-base font-black text-slate-800 font-mono">
+                          {opt.duration_min || opt.total_duration_minutes} mins
+                        </span>
                       </div>
                       <div>
                         <span className="text-[11px] text-slate-400 block font-medium">Distance</span>
-                        <span className="text-base font-black text-slate-800 font-mono">{opt.distance_km || opt.route_distance_km} km</span>
+                        <span className="text-base font-black text-slate-800 font-mono">
+                          {opt.distance_km || opt.route_distance_km} km
+                        </span>
                       </div>
                     </div>
 
                     <div className="flex items-center justify-between pt-1">
                       <span className="text-xs text-slate-500 font-medium">{opt.next_departure}</span>
+
                       <button
                         type="button"
                         onClick={() => setSelectedOption(opt)}
-                        className={`px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                        className={`text-xs font-bold px-4 py-2 rounded-xl transition-colors cursor-pointer ${
                           isSelected
                             ? "bg-sky-600 text-white shadow-sm"
-                            : "bg-slate-100 text-slate-700 hover:bg-slate-200"
+                            : "bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200"
                         }`}
                       >
-                        {isSelected ? "Viewing Details" : "View Journey"}
+                        {isSelected ? "Viewing Itinerary" : "View Journey"}
                       </button>
                     </div>
                   </div>
@@ -453,45 +592,42 @@ export default function HomePage() {
           </div>
         )}
 
-        {/* Selected Journey Expanded Itinerary & Map View */}
+        {/* Selected Journey Detail & Map Section */}
         {selectedOption && (
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 pt-2">
-            <div className="lg:col-span-7 space-y-4">
-              <div className="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm space-y-5">
-                <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-                  <div>
-                    <h3 className="text-base font-bold text-slate-900">{selectedOption.title} Itinerary</h3>
-                    <p className="text-xs text-slate-500">Step-by-step travel instructions</p>
-                  </div>
-                  <span className="text-sm font-black text-emerald-600 font-mono">₹{selectedOption.fare_inr || selectedOption.quoted_price_inr}</span>
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 pt-4">
+            {/* Step-by-Step Itinerary */}
+            <div className="lg:col-span-7 bg-white border border-slate-200 rounded-3xl p-6 shadow-sm space-y-4">
+              <div className="border-b border-slate-100 pb-3 flex items-center justify-between">
+                <div>
+                  <h3 className="text-base font-bold text-slate-900">{selectedOption.title}</h3>
+                  <p className="text-xs text-slate-500">
+                    Step-by-step route itinerary • {selectedOption.distance_km || selectedOption.route_distance_km} km
+                  </p>
                 </div>
-
-                {/* Provenance trace */}
-                {selectedOption.assumptions && selectedOption.assumptions.length > 0 && (
-                  <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-xl space-y-1">
-                    <span className="text-xs font-bold text-slate-700 flex items-center gap-1">
-                      <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
-                      Fare Provenance: {selectedOption.source_name || "Official Tariff"}
+                <div className="text-right">
+                  {selectedOption.price_type === "PRICE_UNAVAILABLE" ? (
+                    <span className="text-xs font-bold text-slate-500">Fare unavailable</span>
+                  ) : (
+                    <span className="text-lg font-black text-emerald-600 font-mono">
+                      ₹{selectedOption.fare_inr || selectedOption.quoted_price_inr}
                     </span>
-                    <ul className="text-xs text-slate-600 space-y-1 list-disc list-inside">
-                      {selectedOption.assumptions.map((asm, aIdx) => (
-                        <li key={aIdx}>{asm}</li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
+                  )}
+                  <span className="text-[11px] text-slate-400 block">Total Fare</span>
+                </div>
+              </div>
 
-                {/* Steps */}
-                <div className="space-y-3">
-                  {selectedOption.steps.map((step, idx) => (
-                    <div key={idx} className="flex items-start gap-3 p-3.5 bg-slate-50 border border-slate-200 rounded-xl">
-                      <div className="w-7 h-7 rounded-lg bg-sky-100 text-sky-700 font-bold text-xs flex items-center justify-center shrink-0">
-                        {step.step_number}
+              {/* Steps List */}
+              <div className="space-y-4 pt-2">
+                <div className="relative pl-6 border-l-2 border-slate-200 space-y-6 ml-2">
+                  {selectedOption.steps?.map((step, idx) => (
+                    <div key={idx} className="relative group">
+                      <div className="absolute -left-[31px] top-0.5 w-4 h-4 rounded-full bg-white border-2 border-sky-500 flex items-center justify-center">
+                        <div className="w-1.5 h-1.5 rounded-full bg-sky-500" />
                       </div>
-                      <div className="flex-1 space-y-0.5">
+                      <div className="space-y-1">
                         <div className="flex items-center justify-between">
-                          <span className="text-xs font-bold text-slate-900">{step.instruction}</span>
-                          <span className="text-xs font-semibold text-sky-700 font-mono">{step.duration_min} mins</span>
+                          <p className="text-xs font-bold text-slate-900">{step.instruction}</p>
+                          <span className="text-[11px] text-slate-400 font-mono">{step.duration_min} mins</span>
                         </div>
                         <p className="text-xs text-slate-500">{step.detail}</p>
                       </div>

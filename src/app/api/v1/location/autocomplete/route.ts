@@ -14,12 +14,13 @@ export async function GET(request: NextRequest) {
     });
   }
 
-  const results = await searchIndianLocations(query);
+  const { results, provider, statusInfo } = await searchIndianLocations(query);
 
   return NextResponse.json({
     query,
     count: results.length,
     results,
-    provider: results.length > 0 ? results[0].provider : "indian_transit_db"
+    provider,
+    statusInfo
   });
 }
