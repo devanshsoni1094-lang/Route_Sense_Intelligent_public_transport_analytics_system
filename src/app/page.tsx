@@ -33,6 +33,7 @@ import { fetchApi } from "@/lib/api";
 import { LocationAutocomplete } from "@/components/common/LocationAutocomplete";
 import { InteractiveMap } from "@/components/common/InteractiveMap";
 import { BookingModal } from "@/components/booking/BookingModal";
+import { BookingSection } from "@/components/booking/BookingSection";
 import { TravelHeroSpotlight } from "@/components/home/TravelHeroSpotlight";
 
 // Iconic Mumbai Metropolitan Region (MMR) Commuter Corridors
@@ -851,6 +852,13 @@ export default function HomePage() {
           </div>
         )}
       </div>
+
+      {/* 3.5 DEDICATED MUMBAI TICKET BOOKING & ONLINE QR PAYMENT SECTION */}
+      <BookingSection
+        initialOrigin={sourceLoc?.displayName || sourceText || "Dadar Central Railway Station"}
+        initialDest={destLoc?.displayName || destText || "CSMT Terminus"}
+        initialDistanceKm={selectedOption?.route_distance_km || 10}
+      />
 
       {/* 4. JOURNEY PASSES GRID */}
       <div id="journey-passes" className="w-full">

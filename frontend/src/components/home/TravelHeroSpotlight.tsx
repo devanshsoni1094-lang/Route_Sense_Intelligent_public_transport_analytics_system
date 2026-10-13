@@ -356,9 +356,20 @@ export const TravelHeroSpotlight: React.FC<TravelHeroSpotlightProps> = ({
           <div className="flex items-center gap-3">
             <button
               onClick={() => {
-                if (recommendedOption) {
-                  onGetPass(recommendedOption);
-                }
+                const optToPass =
+                  recommendedOption ||
+                  (routeOptions && routeOptions[0]) || {
+                    journey_id: "RS-FALLBACK-LOCAL",
+                    title: "Mumbai Local Train (UTS Suburban)",
+                    operator: "Indian Railways Suburban",
+                    transport_mode: "TRAIN",
+                    mode: "TRAIN",
+                    quoted_price_inr: 10,
+                    fare_inr: 10,
+                    route_distance_km: 12,
+                    total_duration_minutes: 20
+                  };
+                onGetPass(optToPass as any);
               }}
               className="px-5 py-2.5 rounded-full bg-[#881337] hover:bg-[#9f1239] text-white font-extrabold text-xs tracking-wide shadow-xl shadow-black/50 hover:scale-105 active:scale-95 transition-all cursor-pointer flex items-center gap-2 border border-rose-400/30"
             >

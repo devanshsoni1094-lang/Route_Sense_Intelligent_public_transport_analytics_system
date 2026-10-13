@@ -25,9 +25,9 @@ import {
   Train,
   AlertCircle,
   Copy,
-  CheckCheck
 } from "lucide-react";
 import { MultiModalOption, ResolvedLocation } from "@/types";
+import { PAYMENT_QR_BASE64 } from "@/lib/paymentQrDataUri";
 
 export type TransitMode = "BUS" | "TRAIN";
 export type BusTier = "BEST_NON_AC" | "BEST_AC";
@@ -691,7 +691,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({
                 {/* The As-Is Uploaded QR Code Image */}
                 <div className="w-56 h-56 sm:w-64 sm:h-64 rounded-2xl overflow-hidden bg-black flex items-center justify-center">
                   <img
-                    src="/images/payment-qr.jpg"
+                    src={PAYMENT_QR_BASE64}
                     alt="Official UPI Payment QR Code"
                     className="w-full h-full object-contain rounded-xl"
                   />

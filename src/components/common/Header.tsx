@@ -87,6 +87,15 @@ export const Header: React.FC = () => {
 
       {/* Right Actions: Status, Notifications & Avatar */}
       <div className="flex items-center gap-3">
+        {/* Quick Link to Ticket Booking Section */}
+        <a
+          href="#booking-section"
+          className="px-3.5 py-1.5 rounded-full bg-gradient-to-r from-rose-600 via-orange-500 to-amber-500 hover:from-rose-500 hover:to-amber-400 text-white font-extrabold text-xs flex items-center gap-1.5 shadow-md shadow-rose-950/50 hover:scale-105 active:scale-95 transition-all cursor-pointer"
+        >
+          <Sparkles className="w-3.5 h-3.5 text-amber-200" />
+          <span>Book Ticket (QR Pay)</span>
+        </a>
+
         {/* Live Connectivity Pill */}
         <div className="hidden lg:flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/5 border border-white/10 text-[11px] text-stone-300">
           <span
