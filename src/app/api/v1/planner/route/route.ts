@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { resolveLocation } from "@/lib/locationProvider";
 import { generateNormalizedJourneyOptions } from "@/lib/pricing/engine";
+import { RoutePlannerQuerySchema } from "@/lib/schemas";
 import {
   getGoogleMapsServerKey,
   googleComputeRoadRoute,
@@ -30,19 +31,45 @@ function calculateHaversineDistanceKm(lat1: number, lon1: number, lat2: number, 
 
 export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams;
-  const originQuery = searchParams.get("origin") || "Dadar Railway Station";
-  const destinationQuery = searchParams.get("destination") || "Chhatrapati Shivaji Maharaj Terminus";
 
-  const oLat = parseFloat(searchParams.get("origin_lat") || "0");
-  const oLng = parseFloat(searchParams.get("origin_lng") || "0");
-  const dLat = parseFloat(searchParams.get("dest_lat") || "0");
-  const dLng = parseFloat(searchParams.get("dest_lng") || "0");
+  const rawParams = {
+    origin: searchParams.get("origin") || "Dadar Railway Station",
+    destination: searchParams.get("destination") || "Chhatrapati Shivaji Maharaj Terminus",
+    origin_lat: searchParams.get("origin_lat") || 0,
+    origin_lng: searchParams.get("origin_lng") || 0,
+    dest_lat: searchParams.get("dest_lat") || 0,
+    dest_lng: searchParams.get("dest_lng") || 0,
+    passengers: searchParams.get("passengers") || 1,
+    fuel_price: searchParams.get("fuel_price") || 104.21,
+    car_eff: searchParams.get("car_eff") || 15.0,
+    bike_eff: searchParams.get("bike_eff") || 45.0,
+    sort_by: searchParams.get("sort_by") || "BALANCED"
+  };
 
-  const passengers = Math.max(1, parseInt(searchParams.get("passengers") || "1", 10));
-  const fuelPricePerLitre = parseFloat(searchParams.get("fuel_price") || "104.21");
-  const carEfficiencyKpl = parseFloat(searchParams.get("car_eff") || "15.0");
-  const bikeEfficiencyKpl = parseFloat(searchParams.get("bike_eff") || "45.0");
-  const sortBy = searchParams.get("sort_by") || "BALANCED"; // CHEAPEST, FASTEST, BALANCED, LEAST_WALKING
+  const parsed = RoutePlannerQuerySchema.safeParse(rawParams);
+  if (!parsed.success) {
+    return NextResponse.json(
+      {
+        error: "Invalid journey search parameters",
+        details: parsed.error.issues.map((i) => `${i.path.join(".")}: ${i.message}`)
+      },
+      { status: 400 }
+    );
+  }
+
+  const {
+    origin: originQuery,
+    destination: destinationQuery,
+    origin_lat: oLat,
+    origin_lng: oLng,
+    dest_lat: dLat,
+    dest_lng: dLng,
+    passengers,
+    fuel_price: fuelPricePerLitre,
+    car_eff: carEfficiencyKpl,
+    bike_eff: bikeEfficiencyKpl,
+    sort_by: sortBy
+  } = parsed.data;
 
   let resolvedOrigin = await resolveLocation(originQuery);
   let resolvedDest = await resolveLocation(destinationQuery);

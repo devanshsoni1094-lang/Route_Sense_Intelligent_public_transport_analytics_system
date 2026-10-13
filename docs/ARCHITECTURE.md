@@ -1,58 +1,56 @@
 # Architecture & System Design — Route Sense
 
-## Executive Summary
-
-Route Sense is an intelligent public transport journey planning and mobility comparison platform engineered specifically for the Indian market. The architecture is decoupled into a high-performance Next.js 14 frontend layer and a modular FastAPI / Python analytical core, designed for serverless execution on Vercel and containerized server deployments.
+## 1. Executive Summary
+Route Sense is a spatial public transport journey planning and mobility intelligence platform built specifically for the Indian market. The architecture is engineered around a cohesive, Vercel-compatible Next.js App Router foundation, strict TypeScript type checking, Zod request/response validation, and secure server-side Google Maps Platform integrations.
 
 ```mermaid
 flowchart TD
-    User["Commuter / User"] -->|HTTP / JSON| NextJS["Next.js App Router (Frontend + API Routes)"]
-    NextJS -->|Location Query| LocProvider["Location Resolver (Google Places + Transit DB)"]
-    NextJS -->|Pricing Request| PricingEngine["Multi-Modal Pricing & Routing Engine"]
-    PricingEngine -->|Suburban Rail Tariff| RailModule["Railway Tariff Engine"]
-    PricingEngine -->|Metro Fare Matrix| MetroModule["Metro Tariff Matrix"]
-    PricingEngine -->|City/State Bus Rates| BusModule["Bus Tariff Engine"]
-    PricingEngine -->|Aggregator Equations| CabModule["Ride-Hailing Pricing Engine"]
-    PricingEngine -->|Fuel & Efficiency| VehicleModule["Personal Vehicle Cost Calculator"]
-    NextJS -->|Python Microservices| FastAPI["FastAPI Analytics Core (Python 3.13)"]
+    User["Commuter / User"] -->|Spatial UI| NextJS["Next.js App Router (Frontend)"]
+    NextJS -->|Zod Validated API| ApiRoutes["Server Route Handlers (/api/v1)"]
+    ApiRoutes -->|Places API New| GPlaces["Google Places Autocomplete & Details"]
+    ApiRoutes -->|Routes API (Drive & Transit)| GRoutes["Google Routes API"]
+    ApiRoutes -->|Fallback Transit Hubs| TransitDB["Verified Indian Transit DB"]
+    ApiRoutes -->|Multimodal Tariffs| PricingEngine["Pricing Intelligence Engine"]
+    PricingEngine -->|Telescopic Slabs| RailAdapter["Indian Railways (Suburban & 2S/SL/3A/2A/1A)"]
+    PricingEngine -->|Distance Slabs| MetroAdapter["Metro Rail (DMRC/Mumbai/Namma)"]
+    PricingEngine -->|Stage Slabs| BusAdapter["City & State RTC Buses"]
+    PricingEngine -->|Base + Km + Peak| CabAdapter["Ride-Hailing Cabs (Mini/Sedan/SUV)"]
+    PricingEngine -->|Meter + Night| AutoAdapter["Auto-Rickshaw (Regulated Meter)"]
+    PricingEngine -->|Upfront Distance| BikeAdapter["Bike Taxi (Rapido/Uber Moto)"]
+    PricingEngine -->|Fuel & Efficiency| PersonalAdapter["Personal Vehicle Running Cost"]
+    ApiRoutes -->|Normalized Journey Payload| NextJS
 ```
 
 ---
 
-## 1. System Layers
+## 2. Core Architectural Principles
 
-### 1.1 Presentation Layer (Frontend)
-- **Framework**: Next.js 14 (App Router, Server Components & Client Components).
-- **Styling**: Tailwind CSS for responsive light-theme interfaces.
-- **Iconography**: Lucide React.
-- **Mapping**: Leaflet / React-Leaflet for interactive corridor display.
-
-### 1.2 API Gateway & Orchestration Layer
-- **Location Autocomplete (`/api/v1/location/autocomplete`)**: Resolves user queries to verified geographic entities across India.
-- **Route Planner (`/api/v1/planner/route`)**: Orchestrates distance calculation, route generation, fare evaluation, and option sorting.
-
-### 1.3 Core Engines
-- **Geospatial Engine**: Computes circuity-adjusted road and rail distance matrices using Haversine formulas and routing provider responses.
-- **Pricing Engine (`src/lib/pricing/engine.ts`)**: Evaluates mode-specific pricing rules (Railway base slabs, Metro fare structures, Bus tariffs, Cab surge models, and Fuel running cost).
+1. **Spatial UI as Primary Surface**: The map canvas and floating command panels form a unified mobility command surface. Visual depth, backdrop blur, and geographic orientation guide user actions.
+2. **Strict Two-Field Search**: The primary user journey requires only `Source` and `Destination`. Time defaults to the current moment in Asia/Kolkata (`en-IN`).
+3. **Provider Decoupling**: Location lookup, route computation, and pricing engines operate as independent modular adapters.
+4. **Data Integrity & Zero Hallucination**: Every displayed price, distance, and duration is explicitly classified as live provider quote, official tariff, API transit fare, estimated running cost, or historical benchmark. When fares are unavailable, they are transparently marked as unavailable.
+5. **Security by Isolation**: Google Maps Platform server secrets (`GOOGLE_MAPS_SERVER_API_KEY`) remain strictly server-side and are never exposed in browser bundles or client requests.
 
 ---
 
-## 2. Data Flow Architecture
+## 3. Technology Stack
 
-1. **User Query Input**: Commuter inputs origin (`Dadar Railway Station`) and destination (`CSMT`).
-2. **Entity Resolution**: `resolveLocation()` searches Google Places API or fallback Indian Transit Database.
-3. **Distance & Corridor Resolution**: System calculates straight-line and circuity-adjusted route distance ($1.30\times$ road circuity factor).
-4. **Multi-Modal Fare Calculation**:
-   - Suburban Rail: $\text{Base} + \text{Slab Tariff}$.
-   - Metro Rail: Distance-band matrix tariff (₹10 - ₹60).
-   - Bus: City stage rate / State express rate per km.
-   - Aggregator Cab: $\text{Base Fare} + (\text{Distance} \times \text{Per KM Rate}) \times \text{Surge Factor}$.
-   - Personal Vehicle: $(\text{Distance} / \text{Efficiency}) \times \text{Fuel Price} + \text{Tolls}$.
-5. **Normalised Response**: Standardized JSON payload containing array of `NormalizedJourneyOption` objects with explicit freshness tags.
+- **Framework**: Next.js 14 (App Router)
+- **Language**: TypeScript (Strict type checking)
+- **Validation**: Zod (Runtime validation for query parameters and responses)
+- **Styling**: Tailwind CSS & Lucide React
+- **Spatial Mapping**: Leaflet with Carto Dark Matter tiles & Google Routes API polyline vector integration
+- **Testing**: Vitest for unit & integration testing
+- **Deployment**: Vercel Serverless Architecture
 
 ---
 
-## 3. Deployment Topology
+## 4. Normalized Data Model Flow
 
-- **Vercel**: Edge and Node.js serverless functions powering Next.js application routes.
-- **FastAPI / Python Service**: Renders analytics, PDF reports, and Scikit-Learn prediction models.
+1. User enters Source and Destination queries in `LocationAutocomplete`.
+2. Autocomplete queries `/api/v1/location/autocomplete`, validated via `LocationAutocompleteQuerySchema`.
+3. Selecting a prediction resolves coordinates through `/api/v1/location/resolve`.
+4. Route search is submitted to `/api/v1/planner/route`, validated via `RoutePlannerQuerySchema`.
+5. Google Routes API computes traffic-aware road distance/duration and public transit legs.
+6. The Multi-Modal Pricing Engine calculates mode-specific tariffs across 8 transport categories.
+7. Payloads are returned as `NormalizedJourneyOption` objects and rendered on the Spatial UI comparison panel.

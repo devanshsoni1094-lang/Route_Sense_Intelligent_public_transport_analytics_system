@@ -147,9 +147,11 @@ export interface MultiModalOption {
   co2_emissions_g: number;
   reliability_score_pct: number;
   occupancy_level?: 'LOW' | 'MODERATE' | 'HIGH';
+  transfers?: number;
   next_departure: string;
   departure_at?: string;
   arrival_at?: string;
+  traffic_status?: string;
   recommended: boolean;
   price_type?: string;
   freshness_status?: string;
