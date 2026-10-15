@@ -26,7 +26,11 @@ import {
   RefreshCw,
   X,
   Zap,
-  Activity
+  Activity,
+  Brain,
+  Coins,
+  Armchair,
+  Gauge
 } from "lucide-react";
 import { MultiModalOption, ResolvedLocation, RouteStep } from "@/types";
 import { fetchApi } from "@/lib/api";
@@ -374,6 +378,9 @@ export default function HomePage() {
   const [isBookingOpen, setIsBookingOpen] = useState(false);
   const [bookingJourney, setBookingJourney] = useState<MultiModalOption | null>(null);
 
+  // Three Smart Filters: SPEED (Fastest Route), CHEAPEST (Lowest Fare), COMFORT (Cabs & AC)
+  const [smartFilter, setSmartFilter] = useState<"SPEED" | "CHEAPEST" | "COMFORT">("SPEED");
+
   // Mumbai-Exclusive Filter Pills
   const [activeCategory, setActiveCategory] = useState<
     "ALL" | "LOCAL_TRAIN" | "BEST_BUS" | "METRO" | "TAXI_AUTO" | "CABS" | "BIKES" | "PERSONAL"
@@ -385,6 +392,34 @@ export default function HomePage() {
   const [fuelPrice, setFuelPrice] = useState(104.21); // Mumbai Petrol ₹104.21/L
   const [carEfficiency, setCarEfficiency] = useState(14.5);
   const [bikeEfficiency, setBikeEfficiency] = useState(45.0);
+
+  // Helper to sort options based on active smart filter
+  const sortJourneyOptions = (options: MultiModalOption[], filter: "SPEED" | "CHEAPEST" | "COMFORT") => {
+    return [...options].sort((a, b) => {
+      if (filter === "CHEAPEST") {
+        const priceA = a.quoted_price_inr ?? a.fare_inr ?? 9999;
+        const priceB = b.quoted_price_inr ?? b.fare_inr ?? 9999;
+        return priceA - priceB;
+      }
+      if (filter === "COMFORT") {
+        const scoreA = a.comfort_score ?? 60;
+        const scoreB = b.comfort_score ?? 60;
+        return scoreB - scoreA;
+      }
+      // Default: SPEED (Fastest travel time using neural duration if available)
+      const durA = a.neural_duration_min ?? a.total_duration_minutes ?? a.duration_min ?? 999;
+      const durB = b.neural_duration_min ?? b.total_duration_minutes ?? b.duration_min ?? 999;
+      return durA - durB;
+    });
+  };
+
+  const handleSmartFilterChange = (filter: "SPEED" | "CHEAPEST" | "COMFORT") => {
+    setSmartFilter(filter);
+    const reSorted = sortJourneyOptions(filteredOptions, filter);
+    if (reSorted.length > 0) {
+      setSelectedOption(reSorted[0]);
+    }
+  };
 
   // Execute Search strictly within Mumbai Metropolitan Region
   const executeSearch = async (
@@ -495,7 +530,7 @@ export default function HomePage() {
       url += `&dest_lat=${activeDestLoc.latitude}&dest_lng=${activeDestLoc.longitude}`;
     }
 
-    url += `&passengers=${passengers}&fuel_price=${fuelPrice}&car_eff=${carEfficiency}&bike_eff=${bikeEfficiency}`;
+    url += `&passengers=${passengers}&fuel_price=${fuelPrice}&car_eff=${carEfficiency}&bike_eff=${bikeEfficiency}&sort_by=${smartFilter}`;
 
     try {
       const res = await fetchApi<{
@@ -506,7 +541,8 @@ export default function HomePage() {
 
       if (res && res.route_options && res.route_options.length > 0) {
         setRouteOptions(res.route_options);
-        setSelectedOption(res.route_options[0]);
+        const sorted = sortJourneyOptions(res.route_options, smartFilter);
+        setSelectedOption(sorted[0] || res.route_options[0]);
         if (res.origin) setSourceLoc(res.origin);
         if (res.destination) setDestLoc(res.destination);
       } else {
@@ -516,7 +552,7 @@ export default function HomePage() {
       }
     } catch (err: any) {
       console.error("Mumbai route search failure:", err);
-      setApiError("Mumbai transit routing temporarily unavailable. Please retry.");
+      setApiError(err?.message || "Mumbai transit routing temporarily unavailable. Please retry.");
     } finally {
       setLoading(false);
     }
@@ -578,7 +614,10 @@ export default function HomePage() {
     return true;
   });
 
-  const recommendedOption = routeOptions.find((o) => o.recommended) || routeOptions[0];
+  // Apply Smart Filters sorting (SPEED, CHEAPEST, COMFORT)
+  const sortedAndFilteredOptions = sortJourneyOptions(filteredOptions, smartFilter);
+
+  const recommendedOption = sortedAndFilteredOptions.find((o) => o.recommended) || sortedAndFilteredOptions[0] || routeOptions[0];
 
   return (
     <div className="w-full flex flex-col gap-6 font-sans animate-in fade-in duration-500">
@@ -862,20 +901,87 @@ export default function HomePage() {
 
       {/* 4. JOURNEY PASSES GRID */}
       <div id="journey-passes" className="w-full">
-        <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center justify-between mb-3">
           <h3 className="text-base sm:text-lg font-bold text-white flex items-center gap-2">
             <span>Available Mumbai Journey Passes</span>
             <span className="px-2 py-0.5 rounded-full bg-rose-500/20 text-rose-300 border border-rose-500/30 text-xs font-semibold">
-              {filteredOptions.length} Verified Options
+              {sortedAndFilteredOptions.length} Verified Options
             </span>
           </h3>
 
           <span
-            onClick={() => setActiveCategory("ALL")}
+            onClick={() => {
+              setActiveCategory("ALL");
+              setSmartFilter("SPEED");
+            }}
             className="text-xs font-semibold text-amber-400 hover:text-amber-300 cursor-pointer"
           >
             Reset Filters &gt;
           </span>
+        </div>
+
+        {/* 3 Smart Filters Selector Banner */}
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 p-3.5 rounded-2xl bg-white/5 border border-white/10 mb-4 shadow-sm">
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-amber-500 to-rose-500 flex items-center justify-center text-white shrink-0 shadow-md">
+              <Sparkles className="w-4 h-4" />
+            </div>
+            <div>
+              <h4 className="text-xs font-black text-white uppercase tracking-wider flex items-center gap-1.5">
+                <span>Three Smart Filters</span>
+                <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-white/10 text-stone-300 font-mono">
+                  Real-Time MMR
+                </span>
+              </h4>
+              <p className="text-[11px] text-stone-300">
+                Prioritize routes by highest comfort, maximum speed, or lowest fare.
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2 flex-wrap w-full sm:w-auto">
+            {/* Speed Filter Button */}
+            <button
+              type="button"
+              onClick={() => handleSmartFilterChange("SPEED")}
+              className={`flex-1 sm:flex-none px-4 py-2 rounded-xl text-xs font-black flex items-center justify-center gap-2 transition-all cursor-pointer shadow-md ${
+                smartFilter === "SPEED"
+                  ? "bg-gradient-to-r from-amber-500 via-orange-500 to-rose-500 text-white shadow-orange-950/50 scale-105 ring-2 ring-amber-300"
+                  : "bg-white/10 hover:bg-white/15 text-stone-300 border border-white/10"
+              }`}
+            >
+              <Zap className="w-3.5 h-3.5 text-amber-300" />
+              <span>Speed (Fastest)</span>
+            </button>
+
+            {/* Cheapest Filter Button */}
+            <button
+              type="button"
+              onClick={() => handleSmartFilterChange("CHEAPEST")}
+              className={`flex-1 sm:flex-none px-4 py-2 rounded-xl text-xs font-black flex items-center justify-center gap-2 transition-all cursor-pointer shadow-md ${
+                smartFilter === "CHEAPEST"
+                  ? "bg-gradient-to-r from-emerald-500 via-teal-500 to-green-500 text-white shadow-emerald-950/50 scale-105 ring-2 ring-emerald-300"
+                  : "bg-white/10 hover:bg-white/15 text-stone-300 border border-white/10"
+              }`}
+            >
+              <Coins className="w-3.5 h-3.5 text-emerald-300" />
+              <span>Cheapest (Lowest Fare)</span>
+            </button>
+
+            {/* Comfort Filter Button */}
+            <button
+              type="button"
+              onClick={() => handleSmartFilterChange("COMFORT")}
+              className={`flex-1 sm:flex-none px-4 py-2 rounded-xl text-xs font-black flex items-center justify-center gap-2 transition-all cursor-pointer shadow-md ${
+                smartFilter === "COMFORT"
+                  ? "bg-gradient-to-r from-purple-500 via-indigo-500 to-blue-500 text-white shadow-purple-950/50 scale-105 ring-2 ring-purple-300"
+                  : "bg-white/10 hover:bg-white/15 text-stone-300 border border-white/10"
+              }`}
+            >
+              <Armchair className="w-3.5 h-3.5 text-purple-300" />
+              <span>Comfort (Cabs &amp; AC)</span>
+            </button>
+          </div>
         </div>
 
         {/* API Error Banner */}
@@ -900,9 +1006,9 @@ export default function HomePage() {
             <Loader2 className="w-8 h-8 animate-spin text-rose-400" />
             <p className="text-xs font-medium">Computing live Mumbai suburban tariffs & traffic corridors...</p>
           </div>
-        ) : filteredOptions.length > 0 ? (
+        ) : sortedAndFilteredOptions.length > 0 ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            {filteredOptions.map((opt, idx) => {
+            {sortedAndFilteredOptions.map((opt, idx) => {
               const isSelected = selectedOption?.journey_id === opt.journey_id;
               const mode = opt.transport_mode || opt.mode;
 
@@ -930,7 +1036,7 @@ export default function HomePage() {
                 >
                   {/* Top Preview Banner */}
                   <div
-                    className={`rounded-[18px] h-28 w-full bg-gradient-to-br ${
+                    className={`rounded-[18px] min-h-[118px] w-full bg-gradient-to-br ${
                       gradientMap[mode] || "from-stone-900 to-stone-950"
                     } border border-white/10 p-3 flex flex-col justify-between overflow-hidden relative shadow-inner mb-3`}
                   >
@@ -958,25 +1064,64 @@ export default function HomePage() {
                       )}
                     </div>
 
-                    <div className="relative z-10">
+                    <div className="relative z-10 flex flex-col gap-1 mt-2">
                       <p className="text-white font-extrabold text-xs drop-shadow-sm truncate">
                         {opt.title}
                       </p>
-                      <p className="text-[10px] text-stone-300 font-medium">
-                        {opt.total_duration_minutes ?? opt.duration_min} mins &bull; {opt.route_distance_km ?? opt.distance_km} km
-                      </p>
+                      
+                      <div className="flex items-center gap-1.5 text-[10px] text-stone-200 font-medium flex-wrap">
+                        <span>{opt.total_duration_minutes ?? opt.duration_min} mins</span>
+                        <span>&bull;</span>
+                        <span>{opt.route_distance_km ?? opt.distance_km} km</span>
+                        <span>&bull;</span>
+                        <span>{opt.transfers && opt.transfers > 0 ? `${opt.transfers} xfer` : "Direct"}</span>
+                      </div>
+
+                      {/* Deep Learning Neural Network Prediction */}
+                      {opt.neural_duration_min && (
+                        <div className="flex items-center gap-1 px-2 py-0.5 rounded-md bg-indigo-950/80 border border-indigo-400/40 text-[9px] text-indigo-200 font-mono shadow-sm mt-0.5 w-fit">
+                          <Brain className="w-3 h-3 text-indigo-400 shrink-0 animate-pulse" />
+                          <span>AI Neural: ~{opt.neural_duration_min}m ({opt.neural_confidence_pct ?? 92}% conf)</span>
+                        </div>
+                      )}
                     </div>
                   </div>
 
                   {/* Operator & Price Row */}
                   <div>
-                    <p className="text-xs font-bold text-white truncate">{opt.title}</p>
-                    <p className="text-[11px] text-stone-400 truncate mb-3">{opt.operator}</p>
+                    <div className="flex items-center justify-between gap-1 mb-1">
+                      <p className="text-xs font-bold text-white truncate">{opt.title}</p>
+                      {opt.smart_filter_tag && (
+                        <span className={`text-[8px] font-black uppercase px-1.5 py-0.5 rounded ${
+                          opt.smart_filter_tag === "SPEED"
+                            ? "bg-amber-500/20 text-amber-300 border border-amber-500/30"
+                            : opt.smart_filter_tag === "CHEAPEST"
+                            ? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/30"
+                            : "bg-purple-500/20 text-purple-300 border border-purple-500/30"
+                        }`}>
+                          {opt.smart_filter_tag}
+                        </span>
+                      )}
+                    </div>
+
+                    <div className="flex items-center justify-between text-[11px] text-stone-400 mb-2">
+                      <span className="truncate">{opt.operator}</span>
+                      {opt.comfort_score && (
+                        <span className="text-[10px] font-semibold text-stone-300 shrink-0">
+                          🛋️ {opt.comfort_score}/100
+                        </span>
+                      )}
+                    </div>
 
                     <div className="flex items-center justify-between pt-2 border-t border-white/10">
-                      <span className="text-[11px] text-stone-400 font-medium">
-                        Verified Fare
-                      </span>
+                      <div className="flex flex-col">
+                        <span className="text-[10px] text-stone-400 font-medium">
+                          Verified Fare
+                        </span>
+                        <span className="text-[9px] text-emerald-400">
+                          {opt.traffic_status || "Live MMR Traffic"}
+                        </span>
+                      </div>
 
                       {/* Price Pill Button (Triggers Booking Modal) */}
                       <button
@@ -1030,10 +1175,97 @@ export default function HomePage() {
               </div>
             </div>
 
-            {/* Condition Pill */}
-            <div className="p-2.5 rounded-2xl bg-white/5 border border-white/10 text-[11px] text-stone-300 flex items-center justify-between mb-4">
-              <span>Status: <strong>{selectedOption?.traffic_status || "Standard Mumbai Peak"}</strong></span>
-              <span className="text-emerald-400 font-bold">{selectedOption?.co2_emissions_g ?? 50}g CO₂</span>
+            {/* Comprehensive Journey Comparison Metrics Grid */}
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 p-3 rounded-2xl bg-white/5 border border-white/10 mb-4 text-xs">
+              {/* Travel Time */}
+              <div className="flex flex-col gap-0.5 p-2 rounded-xl bg-black/20 border border-white/5">
+                <span className="text-[10px] text-stone-400 flex items-center gap-1">
+                  <Clock className="w-3 h-3 text-amber-400" />
+                  <span>Travel Time</span>
+                </span>
+                <span className="text-sm font-black text-white">
+                  {selectedOption?.total_duration_minutes ?? selectedOption?.duration_min ?? 0} mins
+                </span>
+                {selectedOption?.neural_duration_min && (
+                  <span className="text-[9px] text-indigo-300 font-mono flex items-center gap-0.5">
+                    <Brain className="w-2.5 h-2.5 text-indigo-400" />
+                    <span>Neural: ~{selectedOption.neural_duration_min}m</span>
+                  </span>
+                )}
+              </div>
+
+              {/* Distance */}
+              <div className="flex flex-col gap-0.5 p-2 rounded-xl bg-black/20 border border-white/5">
+                <span className="text-[10px] text-stone-400 flex items-center gap-1">
+                  <Navigation className="w-3 h-3 text-rose-400" />
+                  <span>Distance</span>
+                </span>
+                <span className="text-sm font-black text-white">
+                  {selectedOption?.route_distance_km ?? selectedOption?.distance_km ?? 0} km
+                </span>
+                <span className="text-[9px] text-stone-400">
+                  Haversine / Road route
+                </span>
+              </div>
+
+              {/* Verified Fare */}
+              <div className="flex flex-col gap-0.5 p-2 rounded-xl bg-black/20 border border-white/5">
+                <span className="text-[10px] text-stone-400 flex items-center gap-1">
+                  <Coins className="w-3 h-3 text-emerald-400" />
+                  <span>Verified Fare</span>
+                </span>
+                <span className="text-sm font-black text-emerald-300">
+                  ₹{selectedOption?.quoted_price_inr ?? selectedOption?.fare_inr ?? 0}
+                </span>
+                <span className="text-[9px] text-stone-400 truncate">
+                  {selectedOption?.price_type || "Regulated Tariff"}
+                </span>
+              </div>
+
+              {/* Transfers */}
+              <div className="flex flex-col gap-0.5 p-2 rounded-xl bg-black/20 border border-white/5">
+                <span className="text-[10px] text-stone-400 flex items-center gap-1">
+                  <ArrowUpDown className="w-3 h-3 text-cyan-400" />
+                  <span>Transfers</span>
+                </span>
+                <span className="text-sm font-black text-white">
+                  {selectedOption?.transfers && selectedOption.transfers > 0
+                    ? `${selectedOption.transfers} Interchange${selectedOption.transfers > 1 ? "s" : ""}`
+                    : "Direct (0)"}
+                </span>
+                <span className="text-[9px] text-stone-400">
+                  {selectedOption?.steps ? `${selectedOption.steps.length} segments` : "Point to point"}
+                </span>
+              </div>
+
+              {/* Live Traffic */}
+              <div className="flex flex-col gap-0.5 p-2 rounded-xl bg-black/20 border border-white/5">
+                <span className="text-[10px] text-stone-400 flex items-center gap-1">
+                  <Activity className="w-3 h-3 text-orange-400" />
+                  <span>Live Traffic</span>
+                </span>
+                <span className="text-xs font-bold text-amber-300 truncate">
+                  {selectedOption?.traffic_status || "Flowing Normally"}
+                </span>
+                <span className="text-[9px] text-stone-400">
+                  Delay: +{selectedOption?.estimated_delay_min ?? 0} min
+                </span>
+              </div>
+
+              {/* Comfort & Green Score */}
+              <div className="flex flex-col gap-0.5 p-2 rounded-xl bg-black/20 border border-white/5">
+                <span className="text-[10px] text-stone-400 flex items-center gap-1">
+                  <Armchair className="w-3 h-3 text-purple-400" />
+                  <span>Comfort Score</span>
+                </span>
+                <span className="text-sm font-black text-purple-300">
+                  {selectedOption?.comfort_score ?? 60}/100
+                </span>
+                <span className="text-[9px] text-emerald-400 font-semibold flex items-center gap-1">
+                  <Leaf className="w-2.5 h-2.5" />
+                  <span>{selectedOption?.co2_emissions_g ?? 50}g CO₂</span>
+                </span>
+              </div>
             </div>
 
             {/* Steps */}

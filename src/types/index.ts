@@ -171,6 +171,10 @@ export interface MultiModalOption {
   polyline?: string;
   is_live_google_route?: boolean;
   transit_fare_currency?: string;
+  comfort_score?: number;
+  smart_filter_tag?: 'COMFORT' | 'SPEED' | 'CHEAPEST';
+  neural_duration_min?: number;
+  neural_confidence_pct?: number;
   steps: RouteStep[];
 }
 

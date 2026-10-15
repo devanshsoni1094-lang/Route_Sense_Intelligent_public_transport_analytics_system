@@ -11,7 +11,15 @@ export async function fetchApi<T>(endpoint: string, options: RequestInit = {}): 
     });
 
     if (!res.ok) {
-      throw new Error(`API Request failed with status ${res.status}`);
+      let errMsg = `API Request failed with status ${res.status}`;
+      try {
+        const errorData = await res.json();
+        if (errorData?.message) errMsg = errorData.message;
+        else if (errorData?.error) errMsg = errorData.error;
+      } catch (_) {}
+      const err = new Error(errMsg);
+      (err as any).status = res.status;
+      throw err;
     }
 
     return await res.json();

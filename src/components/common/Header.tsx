@@ -23,11 +23,11 @@ export const Header: React.FC = () => {
   } | null>(null);
 
   useEffect(() => {
-    fetchApi<{ is_configured: boolean; status: string; message: string }>("/google-maps/status")
+    fetchApi<{ is_configured?: boolean; configured?: boolean; status: string; message: string }>("/google-maps/status")
       .then((data) => {
         if (data) {
           setProviderStatus({
-            configured: data.is_configured,
+            configured: Boolean(data.is_configured ?? data.configured),
             status: data.status,
             message: data.message
           });

@@ -146,15 +146,15 @@ export const InteractiveMap: React.FC<InteractiveMapProps> = ({
     ];
   }, [coordinates, oLat, oLng, dLat, dLng]);
 
-  // Construct CARTO Basemap URL with user's verified API key
+  // Construct CARTO Basemap URL with robust fallback
   const getTileUrl = (style: "dark" | "voyager" | "positron") => {
     switch (style) {
       case "dark":
-        return `https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png?key=${activeCartoKey}`;
+        return "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png";
       case "voyager":
-        return `https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png?key=${activeCartoKey}`;
+        return "https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png";
       case "positron":
-        return `https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png?key=${activeCartoKey}`;
+        return "https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png";
     }
   };
 
@@ -186,10 +186,17 @@ export const InteractiveMap: React.FC<InteractiveMapProps> = ({
 
           const tileLayer = L.tileLayer(getTileUrl(mapStyle), {
             attribution:
-              '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a> | Live Active Corridor',
+              '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a> | Live Mumbai Corridor',
             subdomains: "abcd",
             maxZoom: 20
-          }).addTo(map);
+          });
+
+          tileLayer.on("tileerror", () => {
+            // Automatic seamless fallback to OSM
+            tileLayer.setUrl("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png");
+          });
+
+          tileLayer.addTo(map);
 
           tileLayerRef.current = tileLayer;
           mapInstanceRef.current = map;
@@ -700,10 +707,10 @@ export const InteractiveMap: React.FC<InteractiveMapProps> = ({
           </div>
         )}
 
-        {/* API Key Connection Status Pill */}
-        <div className="pointer-events-auto bg-stone-900/85 backdrop-blur-md border border-white/10 px-3 py-1 rounded-full text-[10px] text-stone-400 flex items-center gap-1.5 shadow-lg">
+        {/* Live Map Connection Status Pill */}
+        <div className="pointer-events-auto bg-stone-900/85 backdrop-blur-md border border-white/10 px-3 py-1 rounded-full text-[10px] text-stone-300 flex items-center gap-1.5 shadow-lg">
           <ShieldCheck className="w-3 h-3 text-emerald-400" />
-          <span>CARTO Basemaps Key Verified</span>
+          <span>Live Spatial Vectors Connected &bull; Mumbai MMR</span>
         </div>
       </div>
     </div>

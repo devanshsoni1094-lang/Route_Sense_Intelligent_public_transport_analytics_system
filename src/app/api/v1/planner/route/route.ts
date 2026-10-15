@@ -10,6 +10,33 @@ import {
   sanitizeLogMessage
 } from "@/lib/googleMapsService";
 import { MultiModalOption, RouteStep } from "@/types";
+import { predictJourneyDurationWithNeuralNet } from "@/lib/ml/journeyDurationNeuralNet";
+import { isWithinMumbaiMMR } from "@/lib/mumbaiGeofence";
+
+function computeComfortScore(opt: {
+  transport_mode?: string;
+  vehicle_category?: string;
+  title?: string;
+}): number {
+  const mode = (opt.transport_mode || "").toUpperCase();
+  const title = (opt.title || "").toLowerCase();
+  const cat = (opt.vehicle_category || "").toLowerCase();
+
+  if (title.includes("sedan") || title.includes("suv") || cat.includes("suv") || cat.includes("sedan")) return 98;
+  if (mode === "CAB" || title.includes("uber") || title.includes("ola mini")) return 94;
+  if (mode === "CAR_PERSONAL" || title.includes("personal car")) return 90;
+  if (title.includes("taxi") || title.includes("kaali-peeli")) return 86;
+  if (mode === "METRO" || title.includes("metro")) return 85;
+  if (title.includes("ac local")) return 83;
+  if (title.includes("ac electric") || title.includes("best ac")) return 76;
+  if (mode === "AUTO" || title.includes("auto")) return 70;
+  if (mode === "BIKE" || title.includes("bike")) return 64;
+  if (mode === "MOTORCYCLE_PERSONAL") return 62;
+  if (title.includes("best bus") || title.includes("non-ac")) return 58;
+  if (title.includes("local train") || title.includes("second class") || title.includes("uts")) return 55;
+
+  return 60;
+}
 
 function calculateHaversineDistanceKm(lat1: number, lon1: number, lat2: number, lon2: number): number {
   const R = 6371; // Earth radius in km
@@ -81,6 +108,36 @@ export async function GET(request: NextRequest) {
   if (dLat !== 0 && dLng !== 0) {
     resolvedDest.latitude = dLat;
     resolvedDest.longitude = dLng;
+  }
+
+  // Restrict journey planning strictly to Mumbai Metropolitan Region (MMR)
+  const originInMMR =
+    isWithinMumbaiMMR(resolvedOrigin.latitude, resolvedOrigin.longitude, originQuery) &&
+    isWithinMumbaiMMR(
+      resolvedOrigin.latitude,
+      resolvedOrigin.longitude,
+      `${resolvedOrigin.displayName} ${resolvedOrigin.formattedAddress} ${resolvedOrigin.city}`
+    );
+  const destInMMR =
+    isWithinMumbaiMMR(resolvedDest.latitude, resolvedDest.longitude, destinationQuery) &&
+    isWithinMumbaiMMR(
+      resolvedDest.latitude,
+      resolvedDest.longitude,
+      `${resolvedDest.displayName} ${resolvedDest.formattedAddress} ${resolvedDest.city}`
+    );
+
+  if (!originInMMR || !destInMMR) {
+    return NextResponse.json(
+      {
+        error: "MUMBAI_MMR_ONLY",
+        message:
+          "Route Sense journey planning is restricted strictly to Mumbai and the Mumbai Metropolitan Region (MMR). Please select starting and destination points within Mumbai, Thane, Navi Mumbai, Kalyan, or Mira-Bhayandar.",
+        origin_valid: originInMMR,
+        destination_valid: destInMMR,
+        supported_coverage: "Mumbai Metropolitan Region (MMR) — Central, Western & Harbour Corridors"
+      },
+      { status: 400 }
+    );
   }
 
   // Base estimate distance via Haversine road circuity
@@ -269,14 +326,22 @@ export async function GET(request: NextRequest) {
         polyline: gTrans.polyline,
         is_live_google_route: true,
         transit_fare_currency: gTrans.fareCurrency || "INR",
+        comfort_score: computeComfortScore({ transport_mode: gTrans.mode, title: gTrans.title }),
         steps
       };
+
+      const neuralTransPred = predictJourneyDurationWithNeuralNet({
+        distanceKm: googleTransitOpt.route_distance_km || finalRoadDistKm,
+        transportMode: googleTransitOpt.transport_mode || "TRAIN"
+      });
+      googleTransitOpt.neural_duration_min = neuralTransPred.predictedDurationMin;
+      googleTransitOpt.neural_confidence_pct = neuralTransPred.confidencePct;
 
       allJourneyOptions.push(googleTransitOpt);
     }
   }
 
-  // Enrich base comparative options (Road & Public Transit) with Google road metrics and polylines
+  // Enrich base comparative options (Road & Public Transit) with Google road metrics, polylines, and neural net predictions
   for (const opt of baseOptions) {
     const isRoadMode = ["CAB", "AUTO", "BIKE", "CAR_PERSONAL", "MOTORCYCLE_PERSONAL"].includes(opt.transport_mode);
 
@@ -295,6 +360,12 @@ export async function GET(request: NextRequest) {
       opt.route_distance_km = finalRoadDistKm;
     }
 
+    const neuralPred = predictJourneyDurationWithNeuralNet({
+      distanceKm: opt.route_distance_km || finalRoadDistKm,
+      transportMode: opt.transport_mode,
+      congestionIndex: trafficDelayMins > 0 ? Math.min(1.0, trafficDelayMins / 15) : undefined
+    });
+
     const legacyOpt: MultiModalOption = {
       ...opt,
       mode:
@@ -310,17 +381,37 @@ export async function GET(request: NextRequest) {
       next_departure: `Leaves at ${opt.departure_at}`,
       coordinates: isRoadMode && roadCoordinates.length > 0 ? roadCoordinates : undefined,
       polyline: isRoadMode && roadPolyline ? roadPolyline : undefined,
-      is_live_google_route: Boolean(isRoadMode && googleRoadRouteSucceeded)
+      is_live_google_route: Boolean(isRoadMode && googleRoadRouteSucceeded),
+      comfort_score: computeComfortScore(opt),
+      neural_duration_min: neuralPred.predictedDurationMin,
+      neural_confidence_pct: neuralPred.confidencePct
     };
 
     allJourneyOptions.push(legacyOpt);
   }
 
-  // Apply sorting preferences
-  if (sortBy === "CHEAPEST") {
-    allJourneyOptions.sort((a, b) => a.fare_inr - b.fare_inr);
-  } else if (sortBy === "FASTEST") {
+  // Apply Three Smart Filters sorting preferences
+  if (sortBy === "SPEED" || sortBy === "FASTEST") {
+    // Recommend the fastest available route, including metro and local trains
     allJourneyOptions.sort((a, b) => a.duration_min - b.duration_min);
+    allJourneyOptions.forEach((o, i) => {
+      o.recommended = i === 0;
+      if (i === 0) o.smart_filter_tag = "SPEED";
+    });
+  } else if (sortBy === "CHEAPEST") {
+    // Prioritize the lowest-fare options, such as buses and local trains
+    allJourneyOptions.sort((a, b) => a.fare_inr - b.fare_inr);
+    allJourneyOptions.forEach((o, i) => {
+      o.recommended = i === 0;
+      if (i === 0) o.smart_filter_tag = "CHEAPEST";
+    });
+  } else if (sortBy === "COMFORT") {
+    // Prioritize cabs, private taxis, and comfortable journeys
+    allJourneyOptions.sort((a, b) => (b.comfort_score ?? 60) - (a.comfort_score ?? 60));
+    allJourneyOptions.forEach((o, i) => {
+      o.recommended = i === 0;
+      if (i === 0) o.smart_filter_tag = "COMFORT";
+    });
   } else if (sortBy === "LEAST_WALKING") {
     allJourneyOptions.sort((a, b) => a.steps.length - b.steps.length);
   }

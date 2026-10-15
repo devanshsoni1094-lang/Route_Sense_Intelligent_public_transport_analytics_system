@@ -16,6 +16,7 @@ export async function GET() {
 
   return NextResponse.json({
     configured: true,
+    is_configured: true,
     status: health.status,
     message: health.message,
     supported_apis: ["Places API (New)", "Routes API", "Geocoding API", "Directions API"]

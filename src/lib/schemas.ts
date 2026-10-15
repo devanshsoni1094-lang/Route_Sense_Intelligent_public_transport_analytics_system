@@ -86,7 +86,7 @@ export const RoutePlannerQuerySchema = z.object({
   fuel_price: z.coerce.number().positive().default(104.21),
   car_eff: z.coerce.number().positive().default(15.0),
   bike_eff: z.coerce.number().positive().default(45.0),
-  sort_by: z.enum(["BALANCED", "CHEAPEST", "FASTEST", "LEAST_WALKING"]).default("BALANCED")
+  sort_by: z.enum(["BALANCED", "CHEAPEST", "FASTEST", "SPEED", "COMFORT", "LEAST_WALKING"]).default("BALANCED")
 });
 
 export const JourneyStepSchema = z.object({
