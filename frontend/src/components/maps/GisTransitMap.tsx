@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { MapContainer, TileLayer, Marker, Popup, Polyline } from "react-leaflet";
+import { MapContainer, TileLayer, Marker, Popup } from "react-leaflet";
 import L from "leaflet";
 
 export interface ScheduledCorridorStop {
@@ -13,7 +13,7 @@ export interface ScheduledCorridorStop {
   zone: string;
 }
 
-interface LiveMapProps {
+interface GisTransitMapProps {
   stops?: ScheduledCorridorStop[];
   selectedStopId?: string;
   onSelectStop?: (id: string) => void;
@@ -41,7 +41,7 @@ const createStationIcon = (isSelected: boolean) => {
   });
 };
 
-export default function LiveMap({ stops = DEFAULT_MUMBAI_STOPS, selectedStopId, onSelectStop }: LiveMapProps) {
+export default function GisTransitMap({ stops = DEFAULT_MUMBAI_STOPS, selectedStopId, onSelectStop }: GisTransitMapProps) {
   const center: [number, number] = [19.0760, 72.8777]; // Mumbai MMR geographical center
 
   return (

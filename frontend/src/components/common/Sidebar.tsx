@@ -5,7 +5,6 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   LayoutDashboard,
-  Radio,
   GitCommit,
   Users,
   TrendingUp,
@@ -21,7 +20,6 @@ import {
 const navigationItems = [
   { name: "Overview", href: "/", icon: LayoutDashboard },
   { name: "Route Planner", href: "/planner", icon: Navigation },
-  { name: "Live Operations", href: "/live", icon: Radio },
   { name: "Route Analytics", href: "/routes", icon: GitCommit },
   { name: "Passenger Demand", href: "/demand", icon: Users },
   { name: "Predictions", href: "/predictions", icon: TrendingUp },

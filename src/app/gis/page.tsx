@@ -5,7 +5,7 @@ import dynamic from "next/dynamic";
 import { Map, Layers, Filter } from "lucide-react";
 import { fetchApi } from "@/lib/api";
 
-const GisMap = dynamic(() => import("@/components/maps/LiveMap"), {
+const GisMap = dynamic(() => import("@/components/maps/GisTransitMap"), {
   ssr: false,
   loading: () => <div className="h-[560px] bg-slate-900 border border-slate-800 rounded-lg flex items-center justify-center text-slate-400 text-xs">Loading GIS Map Layers...</div>
 });

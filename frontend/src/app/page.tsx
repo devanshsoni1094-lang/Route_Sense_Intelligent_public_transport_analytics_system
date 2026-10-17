@@ -1274,7 +1274,7 @@ export default function HomePage() {
                 <div className="mb-2 flex items-center justify-between text-[11px] text-stone-400">
                   <span className="font-semibold text-stone-300">Turn-by-Turn Waypoints:</span>
                   <span className="text-[10px] text-rose-300 bg-rose-500/10 px-2 py-0.5 rounded-full border border-rose-500/20 font-medium">
-                    Tap step to focus live map
+                    Tap step to focus route map
                   </span>
                 </div>
                 <div className="space-y-2 max-h-64 overflow-y-auto pr-1">
