@@ -16,6 +16,8 @@ dist/
 # Databases & Cache
 iptap.db
 *.sqlite3
+data/
+*.tmp
 .pytest_cache/
 .DS_Store
 

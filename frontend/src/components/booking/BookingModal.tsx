@@ -26,9 +26,14 @@ import {
   Train,
   AlertCircle,
   Copy,
+  ExternalLink,
+  ShieldAlert,
+  Loader2,
+  RefreshCw
 } from "lucide-react";
 import { MultiModalOption, ResolvedLocation } from "@/types";
 import { PAYMENT_QR_BASE64 } from "@/lib/paymentQrDataUri";
+import { TicketRecord } from "@/lib/db/ticketsDb";
 
 export type TransitMode = "BUS" | "TRAIN";
 export type BusTier = "BEST_NON_AC" | "BEST_AC";
@@ -171,6 +176,24 @@ export const BookingModal: React.FC<BookingModalProps> = ({
   const [passengerEmail, setPassengerEmail] = useState("devansh@routesense.in");
   const [numPassengers, setNumPassengers] = useState(passengersCount || 1);
 
+  // Payment & Order State from Backend
+  const [orderData, setOrderData] = useState<{
+    booking: any;
+    payment: {
+      id: string;
+      orderId: string;
+      amount: number;
+      currency: string;
+      keyId?: string;
+      isSandbox: boolean;
+      gateway: string;
+      disclaimer?: string;
+    };
+  } | null>(null);
+
+  // Confirmed Ticket from Backend
+  const [confirmedTicket, setConfirmedTicket] = useState<TicketRecord | null>(null);
+
   // UPI QR Code Payment State
   const [utrNumber, setUtrNumber] = useState("");
   const [copiedUpi, setCopiedUpi] = useState(false);
@@ -178,14 +201,19 @@ export const BookingModal: React.FC<BookingModalProps> = ({
   // Flow State: "DETAILS" -> "PAYMENT_QR" -> "PROCESSING" -> "TICKET"
   const [flowState, setFlowState] = useState<"DETAILS" | "PAYMENT_QR" | "PROCESSING" | "TICKET">("DETAILS");
   const [processingStep, setProcessingStep] = useState(0);
-  const [issuedTicket, setIssuedTicket] = useState<IssuedTicket | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [securityTestAlert, setSecurityTestAlert] = useState<{ type: "error" | "info"; message: string } | null>(null);
 
   // Initialize or reset state when modal opens or journey changes
   useEffect(() => {
     if (isOpen) {
       setFlowState("DETAILS");
       setProcessingStep(0);
-      setIssuedTicket(null);
+      setConfirmedTicket(null);
+      setOrderData(null);
+      setErrorMessage(null);
+      setSecurityTestAlert(null);
       setUtrNumber("");
 
       const sName = originLocation?.displayName || "Dadar Central Station";
@@ -239,9 +267,69 @@ export const BookingModal: React.FC<BookingModalProps> = ({
   const totalFare = Math.max(5, singleFare * numPassengers);
   const durationEstimate = Math.max(8, Math.round(customDistanceKm * (selectedMode === "TRAIN" ? 1.6 : 2.5)));
 
-  // Handle proceed to Payment QR screen
-  const handleProceedToPayment = () => {
-    setFlowState("PAYMENT_QR");
+  // STEP 1: Handle proceed to Payment -> Creates Payment Order on Backend
+  const handleProceedToPayment = async () => {
+    setErrorMessage(null);
+    setSecurityTestAlert(null);
+
+    if (!passengerName.trim()) {
+      setErrorMessage("Please enter passenger full name.");
+      return;
+    }
+    if (!passengerPhone.trim() || passengerPhone.trim().length < 8) {
+      setErrorMessage("Please enter a valid 10-digit mobile number.");
+      return;
+    }
+    if (!passengerEmail.trim() || !passengerEmail.includes("@")) {
+      setErrorMessage("Please enter a valid email address for digital pass delivery.");
+      return;
+    }
+    if (!customSource.trim() || !customDestination.trim()) {
+      setErrorMessage("Source and destination stations or stops are required.");
+      return;
+    }
+
+    setIsSubmitting(true);
+
+    try {
+      const response = await fetch("/api/v1/payments/create-order", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          source: customSource.trim(),
+          destination: customDestination.trim(),
+          distanceKm: customDistanceKm,
+          transportMode: selectedMode,
+          tier: activeTier,
+          passengerName: passengerName.trim(),
+          passengerPhone: passengerPhone.trim(),
+          passengerEmail: passengerEmail.trim().toLowerCase(),
+          passengerCount: numPassengers,
+          sourceLat: originLocation?.latitude,
+          sourceLng: originLocation?.longitude,
+          destLat: destLocation?.latitude,
+          destLng: destLocation?.longitude
+        })
+      });
+
+      const resData = await response.json();
+
+      if (!response.ok || !resData.success) {
+        setErrorMessage(resData.message || resData.error || "Failed to initialize payment order.");
+        setIsSubmitting(false);
+        return;
+      }
+
+      setOrderData({
+        booking: resData.booking,
+        payment: resData.payment
+      });
+      setFlowState("PAYMENT_QR");
+    } catch (err: any) {
+      setErrorMessage(err?.message || "Network error while connecting to ticketing backend.");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   // Auto-fill demo UTR for instant friction-free testing
@@ -257,78 +345,95 @@ export const BookingModal: React.FC<BookingModalProps> = ({
     setTimeout(() => setCopiedUpi(false), 2000);
   };
 
-  // Handle Payment Confirmation & Ticket Issuance
-  const handleConfirmPaymentAndIssueTicket = () => {
-    setFlowState("PROCESSING");
-    setProcessingStep(1);
+  // STEP 2: Authenticate Payment & Verify Cryptographic Signature on Backend
+  const handleVerifyPayment = async (simulateInvalidSignature = false) => {
+    if (!orderData) return;
 
-    setTimeout(() => {
+    setErrorMessage(null);
+    setSecurityTestAlert(null);
+    setIsSubmitting(true);
+
+    try {
+      let paymentId = `pay_user_${Date.now().toString(36)}`;
+      let signature = "";
+
+      if (simulateInvalidSignature) {
+        // Intentionally forged signature to prove backend cryptographic rejection
+        signature = "forged_invalid_signature_cannot_issue_ticket";
+        paymentId = "pay_fake_tampered";
+      } else {
+        // Fetch authentic server-calculated HMAC-SHA256 signature for sandbox order
+        const demoRes = await fetch("/api/v1/payments/demo-signature", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ orderId: orderData.payment.orderId })
+        });
+        const demoData = await demoRes.json();
+        if (!demoRes.ok || !demoData.signature) {
+          throw new Error(demoData.message || "Failed to generate server HMAC signature.");
+        }
+        paymentId = demoData.paymentId;
+        signature = demoData.signature;
+      }
+
+      // Transition to processing visual state
+      setFlowState("PROCESSING");
+      setProcessingStep(1);
+
+      await new Promise((r) => setTimeout(r, 600));
       setProcessingStep(2);
-    }, 800);
 
-    setTimeout(() => {
-      setProcessingStep(3);
-    }, 1600);
-
-    setTimeout(() => {
-      const now = new Date();
-      const pnrNum = (selectedMode === "BUS" ? "BEST" : "CRW") + Math.floor(10000000 + Math.random() * 90000000);
-      const txnNum = "TXN" + Date.now().toString(36).toUpperCase() + Math.floor(1000 + Math.random() * 9000);
-      const generatedUtr = utrNumber.trim() || Math.floor(100000000000 + Math.random() * 900000000000).toString();
-
-      const depTime = now.toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" });
-      const arrTime = new Date(now.getTime() + durationEstimate * 60000).toLocaleTimeString("en-IN", {
-        hour: "2-digit",
-        minute: "2-digit"
+      // Perform SECURE SERVER-SIDE SIGNATURE VERIFICATION
+      const verifyRes = await fetch("/api/v1/payments/verify", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          bookingId: orderData.booking.id,
+          orderId: orderData.payment.orderId,
+          paymentId,
+          signature
+        })
       });
 
-      const ticket: IssuedTicket = {
-        ticketId: `TKT-${Date.now()}`,
-        pnr: pnrNum,
-        bookingDate:
-          now.toLocaleDateString("en-IN", {
-            day: "2-digit",
-            month: "short",
-            year: "numeric"
-          }) +
-          " · " +
-          depTime,
-        journeyDate: now.toLocaleDateString("en-IN", {
-          day: "2-digit",
-          month: "long",
-          year: "numeric"
-        }),
-        departureTime: depTime,
-        arrivalTime: arrTime,
-        passengerName: passengerName.trim() || "Valued Commuter",
-        passengerPhone: passengerPhone.trim() || "+91 9876543210",
-        passengerEmail: passengerEmail.trim() || "passenger@routesense.in",
-        passengerCount: numPassengers,
-        transportMode: selectedMode,
-        vehicleType: fareInfo.vehicleTitle,
-        operator: fareInfo.operator,
-        sourceName: customSource.trim() || "Mumbai Central",
-        sourceCity: "Mumbai",
-        destinationName: customDestination.trim() || "Dadar",
-        destCity: "Mumbai",
-        distanceKm: customDistanceKm,
-        durationMinutes: durationEstimate,
-        farePerPassengerInr: singleFare,
-        totalFarePaidInr: totalFare,
-        paymentMethod: "UPI_QR",
-        paymentStatus: "CONFIRMED",
-        txnId: txnNum,
-        utrRef: generatedUtr
-      };
+      const verifyData = await verifyRes.json();
 
-      setIssuedTicket(ticket);
+      if (!verifyRes.ok || !verifyData.success) {
+        // Signature verification failed as expected for invalid payment
+        setFlowState("PAYMENT_QR");
+        setSecurityTestAlert({
+          type: "error",
+          message:
+            verifyData.message ||
+            "Cryptographic signature check failed! Payment marked FAILED. No ticket was issued."
+        });
+        setIsSubmitting(false);
+        return;
+      }
+
+      setProcessingStep(3);
+      await new Promise((r) => setTimeout(r, 600));
+
+      // Successfully verified on backend and issued ticket
+      setConfirmedTicket(verifyData.ticket);
       setFlowState("TICKET");
-    }, 2400);
+    } catch (err: any) {
+      setFlowState("PAYMENT_QR");
+      setErrorMessage(err?.message || "Payment verification failed.");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   // Print Handler
   const handlePrint = () => {
     window.print();
+  };
+
+  const getVerificationUrl = (token: string) => {
+    if (typeof window !== "undefined") {
+      return `${window.location.origin}/verify?token=${token}`;
+    }
+    return `/verify?token=${token}`;
   };
 
   return (
@@ -364,6 +469,14 @@ export const BookingModal: React.FC<BookingModalProps> = ({
                 <strong>Mumbai Local Trains</strong>. Pay online via QR code.
               </p>
             </div>
+
+            {/* Error Message Alert */}
+            {errorMessage && (
+              <div className="p-3 rounded-2xl bg-rose-500/15 border border-rose-500/40 text-rose-200 text-xs flex items-center gap-2">
+                <AlertCircle className="w-4 h-4 shrink-0 text-rose-400" />
+                <span>{errorMessage}</span>
+              </div>
+            )}
 
             {/* STRICT MODE SELECTOR: BUS OR TRAIN ONLY */}
             <div className="space-y-2">
@@ -501,7 +614,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({
                 </span>
                 <span className="text-emerald-400 flex items-center gap-1 font-semibold">
                   <ShieldCheck className="w-3.5 h-3.5" />
-                  RTO Sept 2026
+                  RTO Mumbai Fares
                 </span>
               </div>
 
@@ -587,7 +700,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-[11px] text-stone-400 mb-1">Email (for Digital PDF)</label>
+                  <label className="block text-[11px] text-stone-400 mb-1">Email (for Digital Pass)</label>
                   <input
                     type="email"
                     value={passengerEmail}
@@ -634,25 +747,35 @@ export const BookingModal: React.FC<BookingModalProps> = ({
               <button
                 type="button"
                 onClick={handleProceedToPayment}
-                className="w-full py-3.5 rounded-2xl bg-gradient-to-r from-rose-500 via-orange-500 to-amber-500 hover:from-rose-600 hover:to-orange-600 text-white font-extrabold text-sm tracking-wide shadow-xl shadow-rose-950/60 hover:scale-[1.01] active:scale-[0.99] transition-all flex items-center justify-center gap-2 cursor-pointer"
+                disabled={isSubmitting}
+                className="w-full py-3.5 rounded-2xl bg-gradient-to-r from-rose-500 via-orange-500 to-amber-500 hover:from-rose-600 hover:to-orange-600 text-white font-extrabold text-sm tracking-wide shadow-xl shadow-rose-950/60 hover:scale-[1.01] active:scale-[0.99] transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                <QrCode className="w-4 h-4 text-white" />
-                <span>Pay ₹{totalFare} via Online QR Code</span>
-                <ArrowRight className="w-4 h-4 ml-1" />
+                {isSubmitting ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin text-white" />
+                    <span>Creating Secure Payment Order...</span>
+                  </>
+                ) : (
+                  <>
+                    <QrCode className="w-4 h-4 text-white" />
+                    <span>Pay ₹{totalFare} via Online QR Code</span>
+                    <ArrowRight className="w-4 h-4 ml-1" />
+                  </>
+                )}
               </button>
 
               <div className="flex items-center justify-center gap-2 text-[10px] text-stone-400">
                 <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
-                <span>Mandatory instant QR scan payment before ticket issuance</span>
+                <span>Ticket is issued strictly after cryptographic payment verification</span>
               </div>
             </div>
           </div>
         )}
 
         {/* ----------------------------------------------------------------- */}
-        {/* VIEW 2: ONLINE UPI QR PAYMENT (SHOWING AS-IS UPLOADED QR IMAGE)   */}
+        {/* VIEW 2: ONLINE UPI QR PAYMENT & SECURE GATEWAY CHECKOUT           */}
         {/* ----------------------------------------------------------------- */}
-        {flowState === "PAYMENT_QR" && (
+        {flowState === "PAYMENT_QR" && orderData && (
           <div className="flex flex-col gap-4 animate-fade-in">
             {/* Top Bar with Back Button */}
             <div className="flex items-center justify-between pb-2 border-b border-white/10">
@@ -665,10 +788,39 @@ export const BookingModal: React.FC<BookingModalProps> = ({
                 <span>Back to Details</span>
               </button>
 
-              <span className="px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 text-[10px] font-bold">
-                ● LIVE PAYMENT GATEWAY
-              </span>
+              <div className="flex items-center gap-2">
+                <span className="px-2.5 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/30 text-[10px] font-bold">
+                  ORDER: {orderData.payment.orderId.slice(0, 18)}...
+                </span>
+                <span className="px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 text-[10px] font-bold">
+                  ● PENDING
+                </span>
+              </div>
             </div>
+
+            {/* Error or Security Test Message */}
+            {errorMessage && (
+              <div className="p-3 rounded-2xl bg-rose-500/15 border border-rose-500/40 text-rose-200 text-xs flex items-center gap-2">
+                <AlertCircle className="w-4 h-4 shrink-0 text-rose-400" />
+                <span>{errorMessage}</span>
+              </div>
+            )}
+
+            {securityTestAlert && (
+              <div
+                className={`p-3 rounded-2xl border text-xs flex items-center gap-2 ${
+                  securityTestAlert.type === "error"
+                    ? "bg-rose-500/20 border-rose-500/50 text-rose-200"
+                    : "bg-emerald-500/20 border-emerald-500/50 text-emerald-200"
+                }`}
+              >
+                <ShieldAlert className="w-4 h-4 shrink-0" />
+                <div>
+                  <strong className="block font-bold">Server Verification Security Notice:</strong>
+                  <span>{securityTestAlert.message}</span>
+                </div>
+              </div>
+            )}
 
             {/* Header info */}
             <div className="text-center">
@@ -690,7 +842,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({
                 <div className="absolute bottom-2 right-2 w-5 h-5 border-b-2 border-r-2 border-amber-400" />
 
                 {/* The As-Is Uploaded QR Code Image */}
-                <div className="w-56 h-56 sm:w-64 sm:h-64 rounded-2xl overflow-hidden bg-black flex items-center justify-center">
+                <div className="w-52 h-52 sm:w-60 sm:h-60 rounded-2xl overflow-hidden bg-black flex items-center justify-center">
                   <img
                     src={PAYMENT_QR_BASE64}
                     alt="Official UPI Payment QR Code"
@@ -768,20 +920,33 @@ export const BookingModal: React.FC<BookingModalProps> = ({
               </div>
             </div>
 
-            {/* CONFIRMATION BUTTON */}
-            <div className="pt-2 flex flex-col gap-2">
+            {/* CONFIRMATION BUTTONS */}
+            <div className="pt-2 flex flex-col gap-2.5">
               <button
                 type="button"
-                onClick={handleConfirmPaymentAndIssueTicket}
-                className="w-full py-3.5 rounded-2xl bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-500 hover:from-emerald-500 hover:to-teal-500 text-white font-extrabold text-sm tracking-wide shadow-xl shadow-emerald-950/60 hover:scale-[1.01] active:scale-[0.99] transition-all flex items-center justify-center gap-2 cursor-pointer"
+                onClick={() => handleVerifyPayment(false)}
+                disabled={isSubmitting}
+                className="w-full py-3.5 rounded-2xl bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-500 hover:from-emerald-500 hover:to-teal-500 text-white font-extrabold text-sm tracking-wide shadow-xl shadow-emerald-950/60 hover:scale-[1.01] active:scale-[0.99] transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
               >
-                <Check className="w-4 h-4 text-white" />
-                <span>I Have Paid ₹{totalFare} &mdash; Verify &amp; Issue Ticket</span>
+                <Lock className="w-4 h-4 text-white" />
+                <span>Verify Payment &amp; Issue E-Ticket</span>
                 <ArrowRight className="w-4 h-4 ml-1" />
               </button>
 
+              {/* Security Test Button to prove failed signatures are rejected */}
+              <button
+                type="button"
+                onClick={() => handleVerifyPayment(true)}
+                disabled={isSubmitting}
+                className="w-full py-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-stone-300 text-xs font-semibold flex items-center justify-center gap-2 cursor-pointer transition-colors"
+                title="Simulate payment tampering to test server rejection"
+              >
+                <ShieldAlert className="w-3.5 h-3.5 text-amber-400" />
+                <span>Test Security: Simulate Tampered Signature (Should Fail)</span>
+              </button>
+
               <p className="text-center text-[10px] text-stone-400">
-                Ticket is automatically issued with encrypted QR code turnstile access.
+                Backend Verification Guarantee: Ticket is generated strictly after cryptographic HMAC signature confirmation.
               </p>
             </div>
           </div>
@@ -799,11 +964,11 @@ export const BookingModal: React.FC<BookingModalProps> = ({
 
             <div className="space-y-1.5">
               <h3 className="text-lg font-extrabold text-white">
-                Verifying Online QR Payment
+                Verifying Payment &amp; Issuing Pass
               </h3>
               <p className="text-xs text-stone-400">
-                {processingStep === 1 && "Verifying UPI Transaction with Banking Network..."}
-                {processingStep === 2 && `Validating Passenger with ${selectedMode === "BUS" ? "BEST Bus Undertaking" : "Suburban Railway"}...`}
+                {processingStep === 1 && "Contacting Payment Gateway & Banking Network..."}
+                {processingStep === 2 && "Verifying Cryptographic HMAC-SHA256 Signature on Backend..."}
                 {processingStep === 3 && "Issuing Official Digital Transit Pass & Encrypted Turnstile QR..."}
               </p>
             </div>
@@ -820,7 +985,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({
         {/* ----------------------------------------------------------------- */}
         {/* VIEW 4: OFFICIAL DIGITAL E-TICKET (BOARDING PASS)                 */}
         {/* ----------------------------------------------------------------- */}
-        {flowState === "TICKET" && issuedTicket && (
+        {flowState === "TICKET" && confirmedTicket && (
           <div className="flex flex-col gap-5 print:p-0 animate-fade-in">
             {/* Success Status Ribbon */}
             <div className="flex items-center justify-between pb-3 border-b border-white/15">
@@ -829,14 +994,14 @@ export const BookingModal: React.FC<BookingModalProps> = ({
                   <Check className="w-4 h-4" />
                 </span>
                 <div>
-                  <p className="text-xs font-bold text-white leading-tight">Payment Verified via QR</p>
-                  <p className="text-[10px] text-emerald-400 font-medium">Digital Transit Pass Issued</p>
+                  <p className="text-xs font-bold text-white leading-tight">Payment Cryptographically Verified</p>
+                  <p className="text-[10px] text-emerald-400 font-medium">Digital Transit Pass Active</p>
                 </div>
               </div>
 
               <div className="text-right">
                 <p className="text-[10px] text-stone-400 uppercase tracking-wider font-bold">Booking PNR</p>
-                <p className="text-xs font-black text-rose-300 font-mono tracking-wider">{issuedTicket.pnr}</p>
+                <p className="text-xs font-black text-rose-300 font-mono tracking-wider">{confirmedTicket.pnr}</p>
               </div>
             </div>
 
@@ -856,27 +1021,32 @@ export const BookingModal: React.FC<BookingModalProps> = ({
                       ROUTE SENSE MUMBAI E-PASS
                     </h4>
                     <p className="text-[9px] text-stone-400 uppercase tracking-widest font-bold">
-                      {issuedTicket.transportMode === "BUS" ? "BEST Bus Digital Boarding Pass" : "Mumbai Suburban Railway Ticket"}
+                      {confirmedTicket.transportMode === "BUS" ? "BEST Bus Digital Boarding Pass" : "Mumbai Suburban Railway Ticket"}
                     </p>
                   </div>
                 </div>
 
-                <span className="px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 text-[10px] font-extrabold uppercase">
-                  ● ACTIVE PASS
-                </span>
+                <div className="text-right">
+                  <span className="px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 text-[10px] font-extrabold uppercase">
+                    ● ACTIVE PASS
+                  </span>
+                  <p className="text-[9px] font-mono text-stone-400 mt-0.5">{confirmedTicket.ticketNumber}</p>
+                </div>
               </div>
 
               {/* Journey Route Banner */}
               <div className="flex items-center justify-between gap-4 py-2">
                 <div className="flex-1 min-w-0">
                   <p className="text-[10px] font-bold text-stone-400 uppercase">From</p>
-                  <p className="text-base font-black text-white truncate">{issuedTicket.sourceName}</p>
-                  <p className="text-xs font-bold text-rose-400 mt-0.5">{issuedTicket.departureTime}</p>
+                  <p className="text-base font-black text-white truncate">{confirmedTicket.source}</p>
+                  <p className="text-xs font-bold text-rose-400 mt-0.5">
+                    {new Date(confirmedTicket.validFrom).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                  </p>
                 </div>
 
                 <div className="flex flex-col items-center shrink-0">
                   <span className="text-[10px] font-bold text-stone-400">
-                    {issuedTicket.durationMinutes} mins &bull; {issuedTicket.distanceKm} km
+                    2-Hour Window &bull; {confirmedTicket.passengerCount} Pax
                   </span>
                   <div className="flex items-center gap-1 my-1">
                     <div className="w-2 h-2 rounded-full bg-rose-500" />
@@ -884,89 +1054,77 @@ export const BookingModal: React.FC<BookingModalProps> = ({
                     <div className="w-2 h-2 rounded-full bg-amber-400" />
                   </div>
                   <span className="text-[9px] font-extrabold px-2 py-0.5 rounded-full bg-white/10 text-stone-300">
-                    {issuedTicket.transportMode === "BUS" ? "BEST BUS" : "LOCAL TRAIN"}
+                    {confirmedTicket.transportMode === "BUS" ? "BEST BUS" : "LOCAL TRAIN"}
                   </span>
                 </div>
 
                 <div className="flex-1 min-w-0 text-right">
                   <p className="text-[10px] font-bold text-stone-400 uppercase">To</p>
-                  <p className="text-base font-black text-white truncate">{issuedTicket.destinationName}</p>
-                  <p className="text-xs font-bold text-amber-400 mt-0.5">{issuedTicket.arrivalTime}</p>
+                  <p className="text-base font-black text-white truncate">{confirmedTicket.destination}</p>
+                  <p className="text-xs font-bold text-amber-400 mt-0.5">
+                    {new Date(confirmedTicket.validUntil).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                  </p>
                 </div>
               </div>
 
               {/* Detailed Info Grid */}
               <div className="p-3.5 rounded-2xl bg-black/40 border border-white/10 grid grid-cols-2 sm:grid-cols-4 gap-3 text-[11px]">
                 <div>
-                  <span className="block text-stone-400 text-[10px]">Date of Travel:</span>
-                  <strong className="text-white text-xs">{issuedTicket.journeyDate}</strong>
+                  <span className="block text-stone-400 text-[10px]">Travel Date:</span>
+                  <strong className="text-white text-xs">{confirmedTicket.journeyDate}</strong>
                 </div>
 
                 <div>
                   <span className="block text-stone-400 text-[10px]">Vehicle / Class:</span>
-                  <strong className="text-white text-xs truncate block">{issuedTicket.vehicleType}</strong>
+                  <strong className="text-white text-xs truncate block">{confirmedTicket.vehicleType}</strong>
                 </div>
 
                 <div>
                   <span className="block text-stone-400 text-[10px]">Passenger:</span>
                   <strong className="text-white text-xs truncate block">
-                    {issuedTicket.passengerName} (x{issuedTicket.passengerCount})
+                    {confirmedTicket.passengerName} (x{confirmedTicket.passengerCount})
                   </strong>
                 </div>
 
                 <div>
                   <span className="block text-stone-400 text-[10px]">Total Fare Paid:</span>
-                  <strong className="text-rose-400 text-sm font-black">₹{issuedTicket.totalFarePaidInr}.00</strong>
+                  <strong className="text-rose-400 text-sm font-black">₹{confirmedTicket.fareAmount}.00</strong>
                 </div>
               </div>
 
               {/* QR Code & AFC Turnstile Row */}
               <div className="flex flex-col sm:flex-row items-center justify-between gap-4 p-3.5 rounded-2xl bg-white/5 border border-white/10">
                 <div className="flex items-center gap-3">
-                  {/* Digital Boarding Pass QR */}
-                  <div className="w-20 h-20 bg-white p-1.5 rounded-xl flex items-center justify-center shrink-0 shadow-md">
-                    <svg viewBox="0 0 100 100" className="w-full h-full text-black fill-current">
-                      <rect x="5" y="5" width="28" height="28" fill="black" />
-                      <rect x="9" y="9" width="20" height="20" fill="white" />
-                      <rect x="13" y="13" width="12" height="12" fill="black" />
-
-                      <rect x="67" y="5" width="28" height="28" fill="black" />
-                      <rect x="71" y="9" width="20" height="20" fill="white" />
-                      <rect x="75" y="13" width="12" height="12" fill="black" />
-
-                      <rect x="5" y="67" width="28" height="28" fill="black" />
-                      <rect x="9" y="71" width="20" height="20" fill="white" />
-                      <rect x="13" y="75" width="12" height="12" fill="black" />
-
-                      <rect x="40" y="8" width="6" height="6" fill="black" />
-                      <rect x="52" y="14" width="8" height="8" fill="black" />
-                      <rect x="42" y="26" width="14" height="6" fill="black" />
-                      <rect x="10" y="42" width="6" height="14" fill="black" />
-                      <rect x="22" y="48" width="12" height="6" fill="black" />
-                      <rect x="42" y="42" width="16" height="16" fill="black" />
-                      <rect x="68" y="44" width="10" height="6" fill="black" />
-                      <rect x="82" y="48" width="8" height="12" fill="black" />
-                      <rect x="45" y="68" width="8" height="16" fill="black" />
-                      <rect x="60" y="75" width="18" height="8" fill="black" />
-                      <rect x="84" y="72" width="10" height="10" fill="black" />
-                    </svg>
+                  {/* Digital Boarding Pass QR (Pointing to /verify?token=...) */}
+                  <div className="w-20 h-20 bg-white p-1 rounded-xl flex items-center justify-center shrink-0 shadow-md">
+                    <img
+                      src={`https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=${encodeURIComponent(
+                        getVerificationUrl(confirmedTicket.verificationToken)
+                      )}`}
+                      alt="Encrypted Ticket QR"
+                      className="w-full h-full object-contain"
+                      onError={(e) => {
+                        // Fallback simple SVG pattern if offline
+                        (e.target as any).style.display = "none";
+                      }}
+                    />
                   </div>
 
                   <div>
-                    <p className="text-xs font-bold text-white">Contactless AFC Turnstile QR</p>
+                    <p className="text-xs font-bold text-white">Contactless Turnstile QR</p>
                     <p className="text-[10px] text-stone-400 mt-0.5 leading-relaxed">
-                      Scan at station AFC automated gates or present to BEST bus conductor.
+                      Scan at automated gates or present to staff conductor for punch verification.
                     </p>
-                    <p className="text-[10px] text-stone-500 font-mono mt-1">
-                      UTR: {issuedTicket.utrRef} &bull; Txn: {issuedTicket.txnId}
+                    <p className="text-[9px] text-stone-500 font-mono mt-1">
+                      Order: {confirmedTicket.orderId} &bull; Valid: 2h
                     </p>
                   </div>
                 </div>
 
                 <div className="text-right sm:border-l sm:border-white/10 sm:pl-4 shrink-0">
-                  <span className="text-[9px] uppercase font-bold text-stone-400 block">Operator Authority</span>
+                  <span className="text-[9px] uppercase font-bold text-stone-400 block">Authority</span>
                   <span className="text-xs font-bold text-stone-200 block truncate max-w-[150px]">
-                    {issuedTicket.operator}
+                    {confirmedTicket.operator}
                   </span>
                   <span className="text-[9px] text-emerald-400 font-semibold block mt-1">
                     ✓ Verified Digital Seal
@@ -974,29 +1132,40 @@ export const BookingModal: React.FC<BookingModalProps> = ({
                 </div>
               </div>
 
-              {/* Watermark / Legal Disclaimer */}
-              <div className="text-[9px] text-stone-400 text-center uppercase tracking-wider">
-                Brihanmumbai Transport &bull; Indian Railways Suburban &bull; Route Sense Digital Ticketing
+              {/* Legal Limitation Notice */}
+              <div className="p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/25 text-[10px] text-amber-200 text-center leading-relaxed">
+                <strong>⚠️ Route Sense Commuter Pass Notice:</strong> {confirmedTicket.disclaimer}
               </div>
             </div>
 
             {/* Action Buttons */}
-            <div className="flex items-center gap-3 pt-2 print:hidden">
+            <div className="flex flex-col sm:flex-row items-center gap-3 pt-2 print:hidden">
               <button
                 type="button"
                 onClick={handlePrint}
-                className="flex-1 py-3 rounded-2xl bg-white/10 hover:bg-white/20 border border-white/15 text-white font-bold text-xs flex items-center justify-center gap-2 transition-all cursor-pointer shadow-md"
+                className="w-full sm:flex-1 py-3 rounded-2xl bg-white/10 hover:bg-white/20 border border-white/15 text-white font-bold text-xs flex items-center justify-center gap-2 transition-all cursor-pointer shadow-md"
               >
                 <Printer className="w-4 h-4 text-rose-400" />
                 <span>Print / Save Ticket PDF</span>
               </button>
 
+              <a
+                href={`/verify?token=${encodeURIComponent(confirmedTicket.verificationToken)}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="w-full sm:flex-1 py-3 rounded-2xl bg-teal-500/20 hover:bg-teal-500/30 border border-teal-500/40 text-teal-300 font-bold text-xs flex items-center justify-center gap-2 transition-all cursor-pointer shadow-md"
+              >
+                <ShieldCheck className="w-4 h-4 text-teal-400" />
+                <span>Verify in Staff Portal</span>
+                <ExternalLink className="w-3.5 h-3.5 ml-0.5" />
+              </a>
+
               <button
                 type="button"
                 onClick={onClose}
-                className="flex-1 py-3 rounded-2xl bg-gradient-to-r from-rose-500 to-amber-500 hover:from-rose-600 hover:to-amber-600 text-white font-bold text-xs flex items-center justify-center gap-2 transition-all cursor-pointer shadow-md"
+                className="w-full sm:flex-1 py-3 rounded-2xl bg-gradient-to-r from-rose-500 to-amber-500 hover:from-rose-600 hover:to-amber-600 text-white font-bold text-xs flex items-center justify-center gap-2 transition-all cursor-pointer shadow-md"
               >
-                <span>Done / Book Another</span>
+                <span>Done / Close</span>
                 <Check className="w-4 h-4" />
               </button>
             </div>

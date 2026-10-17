@@ -11,8 +11,6 @@ import {
   Navigation,
   Compass,
   MapPin,
-  Play,
-  Pause,
   RotateCcw,
   ExternalLink,
   ShieldCheck,
@@ -59,15 +57,11 @@ export const InteractiveMap: React.FC<InteractiveMapProps> = ({
   const mapInstanceRef = useRef<any>(null);
   const leafletRef = useRef<any>(null);
   const tileLayerRef = useRef<any>(null);
-  const vehicleMarkerRef = useRef<any>(null);
   const waypointMarkersRef = useRef<any[]>([]);
 
   const [mapError, setMapError] = useState(false);
   const [mapStyle, setMapStyle] = useState<"dark" | "voyager" | "positron">("dark");
   const [isFullscreen, setIsFullscreen] = useState(false);
-  const [isSimulating, setIsSimulating] = useState(false);
-  const [simProgress, setSimProgress] = useState(0); // 0 to 100%
-  const [currentSpeed, setCurrentSpeed] = useState(42); // km/h
 
   const activeCartoKey =
     cartoApiKey ||
@@ -221,7 +215,6 @@ export const InteractiveMap: React.FC<InteractiveMapProps> = ({
           }
         });
         waypointMarkersRef.current = [];
-        vehicleMarkerRef.current = null;
 
         // 1. Origin Beacon Marker
         const startIcon = L_instance.divIcon({
@@ -394,80 +387,7 @@ export const InteractiveMap: React.FC<InteractiveMapProps> = ({
     }
   }, [highlightedStepIndex, steps, getRoutePoints]);
 
-  // Vehicle Simulation Engine along Corridor
-  useEffect(() => {
-    let animId: any;
-    if (isSimulating && mapInstanceRef.current && leafletRef.current) {
-      const L_instance = leafletRef.current;
-      const map = mapInstanceRef.current;
-      const routePoints = getRoutePoints();
 
-      // Create vehicle marker if not existing
-      if (!vehicleMarkerRef.current && routePoints.length > 0) {
-        const vehicleIcon = L_instance.divIcon({
-          className: "vehicle-simulator-icon",
-          html: `<div style="position: relative; width: 34px; height: 34px; display: flex; align-items: center; justify-content: center; cursor: pointer;">
-            <div style="position: absolute; width: 34px; height: 34px; border-radius: 50%; background: ${primaryColor}; opacity: 0.4; animation: coralPulse 1s infinite;"></div>
-            <div style="width: 26px; height: 26px; border-radius: 50%; background: #1c1917; border: 2.5px solid ${primaryColor}; box-shadow: 0 4px 14px rgba(0,0,0,0.8); display: flex; align-items: center; justify-content: center; font-size: 13px;">
-              ${vehicleEmoji}
-            </div>
-          </div>`,
-          iconSize: [34, 34],
-          iconAnchor: [17, 17]
-        });
-
-        const vMarker = L_instance.marker(routePoints[0], {
-          icon: vehicleIcon,
-          zIndexOffset: 1000
-        }).addTo(map);
-
-        vMarker.bindPopup(`
-          <div style="font-family: inherit; font-size: 11px; font-weight: 700; color: #1c1917; padding: 2px;">
-            <span>${vehicleEmoji} Live Transit Simulator &bull; ${selectedMode}</span>
-          </div>
-        `);
-
-        vehicleMarkerRef.current = vMarker;
-      }
-
-      // Interval animation loop
-      const interval = setInterval(() => {
-        setSimProgress((prev) => {
-          const next = prev >= 100 ? 0 : prev + 1.25;
-
-          // Interpolate point along route
-          const totalPoints = routePoints.length;
-          const exactIndex = ((next / 100) * (totalPoints - 1));
-          const idxLow = Math.floor(exactIndex);
-          const idxHigh = Math.min(totalPoints - 1, Math.ceil(exactIndex));
-          const factor = exactIndex - idxLow;
-
-          const p1 = routePoints[idxLow];
-          const p2 = routePoints[idxHigh];
-
-          if (p1 && p2 && vehicleMarkerRef.current) {
-            const curLat = p1[0] + (p2[0] - p1[0]) * factor;
-            const curLng = p1[1] + (p2[1] - p1[1]) * factor;
-            vehicleMarkerRef.current.setLatLng([curLat, curLng]);
-          }
-
-          // Randomize minor realistic speed fluctuation
-          setCurrentSpeed(Math.floor(38 + Math.sin(next / 5) * 14));
-
-          return next;
-        });
-      }, 100);
-
-      return () => {
-        clearInterval(interval);
-      };
-    } else {
-      if (vehicleMarkerRef.current && mapInstanceRef.current) {
-        mapInstanceRef.current.removeLayer(vehicleMarkerRef.current);
-        vehicleMarkerRef.current = null;
-      }
-    }
-  }, [isSimulating, getRoutePoints, primaryColor, vehicleEmoji, selectedMode]);
 
   // Controls
   const handleZoomIn = () => {
@@ -619,22 +539,8 @@ export const InteractiveMap: React.FC<InteractiveMapProps> = ({
         </div>
       </div>
 
-      {/* 2. FLOATING RIGHT CONTROL COLUMN (Zoom, Fit, Simulator, Navigation) */}
+      {/* 2. FLOATING RIGHT CONTROL COLUMN (Zoom, Fit, Navigation) */}
       <div className="absolute right-3.5 bottom-14 z-20 flex flex-col gap-2">
-        
-        {/* Vehicle Tracker Simulator Button */}
-        <button
-          onClick={() => setIsSimulating(!isSimulating)}
-          title={isSimulating ? "Pause Live Vehicle Tracking" : "Start Live Vehicle Simulator"}
-          className={`p-2.5 rounded-2xl backdrop-blur-xl border transition-all shadow-2xl flex items-center justify-center cursor-pointer ${
-            isSimulating
-              ? "bg-rose-600 text-white border-rose-400 ring-2 ring-rose-400/50"
-              : "bg-stone-900/85 hover:bg-stone-800 border-white/15 text-stone-300 hover:text-white"
-          }`}
-        >
-          {isSimulating ? <Pause className="w-4 h-4 animate-pulse" /> : <Play className="w-4 h-4" />}
-        </button>
-
         {/* Fit Bounds */}
         <button
           onClick={handleRecenter}
@@ -672,45 +578,21 @@ export const InteractiveMap: React.FC<InteractiveMapProps> = ({
         </button>
       </div>
 
-      {/* 3. BOTTOM TELEMETRY BAR: SIMULATOR SCRUBBER OR COORDINATES */}
+      {/* 3. BOTTOM OVERLAY: COORDINATES & STATUS */}
       <div className="absolute bottom-3 left-3.5 right-3.5 z-20 flex items-center justify-between gap-2 pointer-events-none">
-        
-        {/* Simulator Info Card when active */}
-        {isSimulating ? (
-          <div className="pointer-events-auto bg-stone-900/90 backdrop-blur-2xl border border-rose-500/40 px-3.5 py-1.5 rounded-2xl flex items-center gap-3 text-xs text-white shadow-2xl">
-            <span className="text-base">{vehicleEmoji}</span>
-            <div>
-              <div className="flex items-center gap-2">
-                <span className="font-extrabold text-rose-300 text-[11px] uppercase tracking-wide">
-                  Live Tracking
-                </span>
-                <span className="text-[10px] text-stone-400">&bull; {currentSpeed} km/h</span>
-                <span className="text-[10px] font-mono text-emerald-400">{Math.round(simProgress)}%</span>
-              </div>
-              {/* Progress Mini Bar */}
-              <div className="w-28 sm:w-36 h-1.5 bg-white/15 rounded-full overflow-hidden mt-1">
-                <div
-                  className="h-full bg-gradient-to-r from-orange-500 via-rose-500 to-amber-400 transition-all duration-100"
-                  style={{ width: `${simProgress}%` }}
-                />
-              </div>
-            </div>
-          </div>
-        ) : (
-          /* Static Origin -> Destination Lat/Lng Stamp */
-          <div className="hidden sm:flex items-center gap-2 bg-stone-900/85 backdrop-blur-md border border-white/10 px-3 py-1 rounded-full text-[10px] text-stone-400 font-mono shadow-lg">
-            <MapPin className="w-3 h-3 text-orange-400" />
-            <span>{oLat.toFixed(3)}°N, {oLng.toFixed(3)}°E</span>
-            <span>➔</span>
-            <MapPin className="w-3 h-3 text-rose-400" />
-            <span>{dLat.toFixed(3)}°N, {dLng.toFixed(3)}°E</span>
-          </div>
-        )}
+        {/* Origin -> Destination Lat/Lng Stamp */}
+        <div className="hidden sm:flex items-center gap-2 bg-stone-900/85 backdrop-blur-md border border-white/10 px-3 py-1 rounded-full text-[10px] text-stone-400 font-mono shadow-lg">
+          <MapPin className="w-3 h-3 text-orange-400" />
+          <span>{oLat.toFixed(3)}°N, {oLng.toFixed(3)}°E</span>
+          <span>➔</span>
+          <MapPin className="w-3 h-3 text-rose-400" />
+          <span>{dLat.toFixed(3)}°N, {dLng.toFixed(3)}°E</span>
+        </div>
 
         {/* Live Map Connection Status Pill */}
         <div className="pointer-events-auto bg-stone-900/85 backdrop-blur-md border border-white/10 px-3 py-1 rounded-full text-[10px] text-stone-300 flex items-center gap-1.5 shadow-lg">
           <ShieldCheck className="w-3 h-3 text-emerald-400" />
-          <span>Live Spatial Vectors Connected &bull; Mumbai MMR</span>
+          <span>Transit Route Corridors Active &bull; Mumbai MMR</span>
         </div>
       </div>
     </div>

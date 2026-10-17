@@ -1,128 +1,202 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useState } from "react";
 import dynamic from "next/dynamic";
-import { Radio, Search, Filter, RefreshCw, ShieldAlert, Navigation } from "lucide-react";
-import { fetchApi } from "@/lib/api";
-import { VehicleTelemetry } from "@/types";
+import { Train, Bus, Search, Filter, ShieldCheck, MapPin, Clock, Calendar, ArrowRight } from "lucide-react";
+import Link from "next/link";
+import { ScheduledCorridorStop } from "@/components/maps/LiveMap";
 
 const LiveMap = dynamic(() => import("@/components/maps/LiveMap"), {
   ssr: false,
-  loading: () => <div className="h-[520px] bg-slate-900 border border-slate-800 rounded-lg flex items-center justify-center text-slate-400 text-xs">Loading Interactive GIS Map...</div>
+  loading: () => (
+    <div className="h-[520px] bg-slate-900 border border-slate-800 rounded-lg flex items-center justify-center text-slate-400 text-xs">
+      Loading Public Transit Corridor Map...
+    </div>
+  )
 });
 
-const mockVehicles: VehicleTelemetry[] = [
-  { vehicle_id: "KA-01-F-1001", vehicle_number: "KA-01-F-1001", route_id: "R-500A", route_name: "500-A", latitude: 12.9172, longitude: 77.6228, speed_kmh: 28.5, heading_deg: 45, delay_minutes: 14.2, status: "DELAYED", last_updated: new Date().toISOString(), is_simulated: true },
-  { vehicle_id: "KA-01-F-1002", vehicle_number: "KA-01-F-1002", route_id: "R-335E", route_name: "335-E", latitude: 12.9778, longitude: 77.5713, speed_kmh: 34.0, heading_deg: 90, delay_minutes: 1.5, status: "ON_TIME", last_updated: new Date().toISOString(), is_simulated: true },
-  { vehicle_id: "KA-01-F-1003", vehicle_number: "KA-01-F-1003", route_id: "R-201", route_name: "201", latitude: 12.9252, longitude: 77.5735, speed_kmh: 0.0, heading_deg: 0, delay_minutes: 0.5, status: "ON_TIME", last_updated: new Date().toISOString(), is_simulated: true },
-  { vehicle_id: "KA-01-F-1004", vehicle_number: "KA-01-F-1004", route_id: "R-V500D", route_name: "V-500D", latitude: 13.0358, longitude: 77.5970, speed_kmh: 48.0, heading_deg: 180, delay_minutes: 2.1, status: "ON_TIME", last_updated: new Date().toISOString(), is_simulated: true },
+interface PublicTransitCorridor {
+  route_id: string;
+  route_name: string;
+  operator: string;
+  mode: "TRAIN" | "BUS" | "METRO";
+  frequency_peak: string;
+  operating_hours: string;
+  total_stops: number;
+  fare_range: string;
+  origin: string;
+  destination: string;
+}
+
+const MUMBAI_SCHEDULED_CORRIDORS: PublicTransitCorridor[] = [
+  {
+    route_id: "CR-FAST",
+    route_name: "Central Railway Fast Suburban",
+    operator: "Central Railway (CR)",
+    mode: "TRAIN",
+    frequency_peak: "Every 3–4 mins",
+    operating_hours: "04:00 AM – 01:30 AM",
+    total_stops: 18,
+    fare_range: "₹5 – ₹30 (II) / ₹65 – ₹235 (I)",
+    origin: "CSMT",
+    destination: "Kalyan / Karjat / Kasara"
+  },
+  {
+    route_id: "WR-EXPRESS",
+    route_name: "Western Railway Slow & Fast Line",
+    operator: "Western Railway (WR)",
+    mode: "TRAIN",
+    frequency_peak: "Every 2–3 mins",
+    operating_hours: "03:45 AM – 01:45 AM",
+    total_stops: 37,
+    fare_range: "₹5 – ₹30 (II) / ₹65 – ₹235 (I)",
+    origin: "Churchgate",
+    destination: "Borivali / Virar / Dahanu Road"
+  },
+  {
+    route_id: "METRO-L3",
+    route_name: "Metro Line 3 (Aqua Underground Line)",
+    operator: "Mumbai Metro Rail Corporation (MMRC)",
+    mode: "METRO",
+    frequency_peak: "Every 6 mins",
+    operating_hours: "06:30 AM – 10:30 PM",
+    total_stops: 27,
+    fare_range: "₹10 – ₹50",
+    origin: "Aarey JVLR",
+    destination: "BKC / Cuffe Parade"
+  },
+  {
+    route_id: "BEST-EXPRESS",
+    route_name: "BEST Electric Air-Conditioned Express",
+    operator: "BEST Undertaking",
+    mode: "BUS",
+    frequency_peak: "Every 8–10 mins",
+    operating_hours: "05:00 AM – 11:30 PM",
+    total_stops: 42,
+    fare_range: "₹12 – ₹65 (AC Electric)",
+    origin: "Colaba Depot",
+    destination: "Borivali / Thane / Vashi"
+  },
+  {
+    route_id: "HARBOUR-LINE",
+    route_name: "Harbour Line Trans-Creek Corridor",
+    operator: "Central Railway (Harbour)",
+    mode: "TRAIN",
+    frequency_peak: "Every 5 mins",
+    operating_hours: "04:15 AM – 01:15 AM",
+    total_stops: 24,
+    fare_range: "₹5 – ₹30 (II)",
+    origin: "CSMT / Vadala Road",
+    destination: "Panvel / Goregaon"
+  }
 ];
 
 export default function LiveOperationsPage() {
-  const [vehicles, setVehicles] = useState<VehicleTelemetry[]>(mockVehicles);
+  const [corridors] = useState<PublicTransitCorridor[]>(MUMBAI_SCHEDULED_CORRIDORS);
   const [search, setSearch] = useState("");
-  const [selectedRoute, setSelectedRoute] = useState("ALL");
-  const [selectedVehicleId, setSelectedVehicleId] = useState<string | undefined>();
+  const [selectedMode, setSelectedMode] = useState("ALL");
+  const [selectedRouteId, setSelectedRouteId] = useState<string>("CR-FAST");
 
-  const loadData = () => {
-    fetchApi<VehicleTelemetry[]>("/live/telemetry")
-      .then((res) => setVehicles(res))
-      .catch((err) => console.warn("Using fallback live telemetry", err));
-  };
-
-  useEffect(() => {
-    loadData();
-    const interval = setInterval(loadData, 10000);
-    return () => clearInterval(interval);
-  }, []);
-
-  const filtered = vehicles.filter((v) => {
-    const matchesSearch = v.vehicle_number.toLowerCase().includes(search.toLowerCase()) || (v.route_name && v.route_name.toLowerCase().includes(search.toLowerCase()));
-    const matchesRoute = selectedRoute === "ALL" || v.route_id === selectedRoute;
-    return matchesSearch && matchesRoute;
+  const filtered = corridors.filter((c) => {
+    const matchesSearch =
+      c.route_name.toLowerCase().includes(search.toLowerCase()) ||
+      c.operator.toLowerCase().includes(search.toLowerCase()) ||
+      c.origin.toLowerCase().includes(search.toLowerCase()) ||
+      c.destination.toLowerCase().includes(search.toLowerCase());
+    const matchesMode = selectedMode === "ALL" || c.mode === selectedMode;
+    return matchesSearch && matchesMode;
   });
 
   return (
     <div className="space-y-6">
       {/* Page Header */}
-      <div className="bg-slate-900 border border-slate-800 rounded-lg p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+      <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-xl">
         <div>
           <div className="flex items-center gap-2">
-            <Radio className="w-5 h-5 text-emerald-400 animate-pulse" />
-            <h2 className="text-lg font-bold text-white tracking-wide">Live Operations Command Centre</h2>
+            <Train className="w-5 h-5 text-rose-400" />
+            <h2 className="text-lg font-bold text-white tracking-wide">
+              Mumbai Transit Corridors &amp; Schedules
+            </h2>
             <span className="bg-emerald-950 text-emerald-300 border border-emerald-800 text-[10px] font-semibold px-2 py-0.5 rounded">
-              SIMULATED TELEMETRY FEED
+              VERIFIED TARIFF TIMETABLES
             </span>
           </div>
-          <p className="text-xs text-slate-400 mt-0.5">
-            Near-real-time vehicle locations, speed telemetry, and schedule-versus-actual delay tracking.
+          <p className="text-xs text-slate-400 mt-1 max-w-2xl">
+            Official operational schedules, interchange junctions, and regulated fares across Mumbai Metropolitan Region (MMR).
+            Live vehicle tracking has been retired in compliance with transit policy.
           </p>
         </div>
-        <button onClick={loadData} className="flex items-center gap-1.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 px-3 py-1.5 rounded-md text-xs font-medium transition-colors">
-          <RefreshCw className="w-3.5 h-3.5" />
-          Refresh Positions
-        </button>
+
+        <Link
+          href="/#booking-section"
+          className="flex items-center gap-1.5 bg-gradient-to-r from-rose-600 to-amber-600 hover:from-rose-500 hover:to-amber-500 text-white px-4 py-2 rounded-full text-xs font-bold transition-all shadow-md shrink-0"
+        >
+          <span>Book Verified Pass</span>
+          <ArrowRight className="w-3.5 h-3.5" />
+        </Link>
       </div>
 
       {/* Map & synchronized sidebar layout */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Map View */}
         <div className="lg:col-span-2 space-y-4">
-          <LiveMap vehicles={filtered} selectedVehicleId={selectedVehicleId} onSelectVehicle={setSelectedVehicleId} />
+          <LiveMap />
         </div>
 
-        {/* Synchronized Table List */}
-        <div className="bg-slate-900 border border-slate-800 rounded-lg p-4 space-y-4 flex flex-col h-[520px]">
+        {/* Synchronized Corridor Schedule List */}
+        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 space-y-4 flex flex-col h-[520px] shadow-xl">
           <div className="space-y-2">
             <div className="relative">
               <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
               <input
                 type="text"
-                placeholder="Search bus number or route..."
+                placeholder="Search line, station, operator..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                className="w-full bg-slate-950 border border-slate-800 rounded-md pl-9 pr-3 py-1.5 text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:border-sky-500"
+                className="w-full bg-slate-950 border border-slate-800 rounded-lg pl-9 pr-3 py-1.5 text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:border-rose-500"
               />
             </div>
             <select
-              value={selectedRoute}
-              onChange={(e) => setSelectedRoute(e.target.value)}
-              className="w-full bg-slate-950 border border-slate-800 rounded-md px-3 py-1.5 text-xs text-slate-200 focus:outline-none focus:border-sky-500"
+              value={selectedMode}
+              onChange={(e) => setSelectedMode(e.target.value)}
+              className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-1.5 text-xs text-slate-200 focus:outline-none focus:border-rose-500"
             >
-              <option value="ALL">All Routes</option>
-              <option value="R-500A">500-A (Silk Board - Hebbal)</option>
-              <option value="R-335E">335-E (Majestic - ITPL)</option>
-              <option value="R-201">201 (Majestic - Banashankari)</option>
-              <option value="R-V500D">V-500D (Vayu Vajra AC)</option>
+              <option value="ALL">All Modes (Train, Metro, Bus)</option>
+              <option value="TRAIN">Suburban Local Train (CR / WR / Harbour)</option>
+              <option value="METRO">Mumbai Metro Lines</option>
+              <option value="BUS">BEST Electric Express</option>
             </select>
           </div>
 
-          <div className="flex-1 overflow-y-auto space-y-2 pr-1">
-            {filtered.map((v) => (
+          <div className="flex-1 overflow-y-auto space-y-2.5 pr-1">
+            {filtered.map((c) => (
               <div
-                key={v.vehicle_id}
-                onClick={() => setSelectedVehicleId(v.vehicle_id)}
-                className={`p-3 rounded-md border transition-all cursor-pointer ${
-                  selectedVehicleId === v.vehicle_id
-                    ? "bg-sky-950 border-sky-500"
+                key={c.route_id}
+                onClick={() => setSelectedRouteId(c.route_id)}
+                className={`p-3 rounded-xl border transition-all cursor-pointer ${
+                  selectedRouteId === c.route_id
+                    ? "bg-rose-950/40 border-rose-500 shadow-md ring-1 ring-rose-500/50"
                     : "bg-slate-950 border-slate-800 hover:border-slate-700"
                 }`}
               >
                 <div className="flex items-center justify-between">
-                  <span className="font-mono font-bold text-xs text-white">{v.vehicle_number}</span>
-                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded border ${
-                    v.status === 'ON_TIME' ? 'bg-emerald-950 text-emerald-400 border-emerald-800' : 'bg-amber-950 text-amber-400 border-amber-800'
-                  }`}>
-                    {v.status}
+                  <span className="font-bold text-xs text-white">{c.route_name}</span>
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded border bg-slate-800 text-stone-300 border-white/10 font-mono">
+                    {c.mode}
                   </span>
                 </div>
-                <div className="mt-1.5 flex items-center justify-between text-[11px] text-slate-400">
-                  <span>Route: <strong className="text-slate-200">{v.route_name || v.route_id}</strong></span>
-                  <span>Speed: <strong className="text-slate-200">{v.speed_kmh} km/h</strong></span>
+                <div className="mt-1 text-[11px] text-slate-400">
+                  <span>Operator: <strong className="text-slate-200">{c.operator}</strong></span>
                 </div>
-                <div className="mt-1 flex items-center justify-between text-[10px] text-slate-400">
-                  <span>Delay: <strong className="text-amber-400">+{v.delay_minutes} min</strong></span>
-                  <span className="font-mono">{new Date(v.last_updated).toLocaleTimeString()}</span>
+                <div className="mt-1 flex items-center justify-between text-[11px] text-slate-400">
+                  <span className="flex items-center gap-1">
+                    <Clock className="w-3 h-3 text-amber-400" />
+                    <span>{c.frequency_peak}</span>
+                  </span>
+                  <span className="text-emerald-400 font-semibold">{c.fare_range}</span>
+                </div>
+                <div className="mt-1 text-[10px] text-slate-500">
+                  {c.origin} ➔ {c.destination} ({c.operating_hours})
                 </div>
               </div>
             ))}

@@ -638,7 +638,7 @@ export default function HomePage() {
             </span>
           </h2>
           <p className="text-xs text-stone-300 mt-0.5">
-            Accurate fares, travel times & vehicle telemetry exclusively for Mumbai, Thane & Navi Mumbai.
+            Accurate fares, travel times &amp; scheduled transit routes exclusively for Mumbai, Thane &amp; Navi Mumbai.
           </p>
         </div>
 
