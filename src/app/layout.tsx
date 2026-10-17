@@ -1,6 +1,7 @@
 import React from "react";
 import "./globals.css";
 import { Header } from "@/components/common/Header";
+import { ClientProviders } from "@/components/providers/ClientProviders";
 import {
   Home,
   Compass,
@@ -31,8 +32,8 @@ export default function RootLayout({
   return (
     <html lang="en" className="dark">
       <body className="min-h-screen bg-[#151211] text-stone-100 flex flex-col items-center justify-start p-2 sm:p-4 md:p-6 lg:p-8 font-sans antialiased selection:bg-rose-500/30 selection:text-rose-200">
-        
-        {/* 1. TOP VISIONOS BROWSER CAPSULE BAR (Matching uploaded image) */}
+        <ClientProviders>
+          {/* 1. TOP VISIONOS BROWSER CAPSULE BAR (Matching uploaded image) */}
         <div className="w-full max-w-6xl mb-4 px-4 py-2.5 rounded-full bg-stone-900/70 backdrop-blur-2xl border border-white/10 shadow-2xl flex items-center justify-between text-stone-300 text-xs select-none">
           {/* Left Browser Controls */}
           <div className="flex items-center gap-3">
@@ -156,7 +157,7 @@ export default function RootLayout({
             </footer>
           </main>
         </div>
-
+        </ClientProviders>
       </body>
     </html>
   );

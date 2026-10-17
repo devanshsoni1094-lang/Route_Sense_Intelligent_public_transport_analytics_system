@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import { useAuth } from "@/context/AuthContext";
 import {
   X,
   Ticket,
@@ -171,10 +172,18 @@ export const BookingModal: React.FC<BookingModalProps> = ({
   const [customDistanceKm, setCustomDistanceKm] = useState(12);
 
   // Passenger Form State
-  const [passengerName, setPassengerName] = useState("Devansh Soni");
+  const { user } = useAuth();
+  const [passengerName, setPassengerName] = useState(user?.name || "Devansh Soni");
   const [passengerPhone, setPassengerPhone] = useState("9876543210");
-  const [passengerEmail, setPassengerEmail] = useState("devansh@routesense.in");
+  const [passengerEmail, setPassengerEmail] = useState(user?.email || "devansh.soni@gmail.com");
   const [numPassengers, setNumPassengers] = useState(passengersCount || 1);
+
+  useEffect(() => {
+    if (user) {
+      if (user.name) setPassengerName(user.name);
+      if (user.email) setPassengerEmail(user.email);
+    }
+  }, [user]);
 
   // Payment & Order State from Backend
   const [orderData, setOrderData] = useState<{

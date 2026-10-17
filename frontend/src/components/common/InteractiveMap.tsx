@@ -180,7 +180,7 @@ export const InteractiveMap: React.FC<InteractiveMapProps> = ({
 
           const tileLayer = L.tileLayer(getTileUrl(mapStyle), {
             attribution:
-              '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a> | Live Mumbai Corridor',
+              '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a> | Mumbai Transit Corridor',
             subdomains: "abcd",
             maxZoom: 20
           });
@@ -460,12 +460,12 @@ export const InteractiveMap: React.FC<InteractiveMapProps> = ({
       {/* 1. TOP HEADER OVERLAY: STATUS, TITLE & TILE STYLE SWITCHER */}
       <div className="absolute top-3.5 left-3.5 right-3.5 z-20 flex flex-wrap items-center justify-between gap-2 pointer-events-none">
         
-        {/* Left Live Badge */}
+        {/* Left Transit Badge */}
         <div className="flex items-center gap-2 pointer-events-auto">
           <div className="bg-stone-900/85 backdrop-blur-xl border border-white/15 px-3 py-1.5 rounded-full text-xs font-bold text-white flex items-center gap-2 shadow-xl">
-            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+            <span className="w-2 h-2 rounded-full bg-emerald-400" />
             <span className="tracking-wide uppercase text-[10px] text-emerald-300 font-mono">
-              LIVE CARTO MAP
+              TRANSIT ROUTE MAP
             </span>
             <span className="text-stone-500 text-[10px]">&bull;</span>
             <span className="text-[11px] text-stone-200 truncate max-w-[140px] sm:max-w-none">

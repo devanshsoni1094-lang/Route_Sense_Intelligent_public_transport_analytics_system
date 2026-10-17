@@ -23,7 +23,8 @@ import {
   Loader2,
   RefreshCw,
   Lock,
-  Stamp
+  Stamp,
+  Sparkles
 } from "lucide-react";
 import Link from "next/link";
 import { TicketRecord, ValidationStatus, ValidationRecord } from "@/lib/db/ticketsDb";
@@ -159,6 +160,58 @@ function TicketVerificationContent() {
         </Link>
       </div>
 
+      {/* Quick Test Sample Passes Bar */}
+      <div className="bg-stone-900/60 border border-white/5 rounded-2xl p-3 flex flex-wrap items-center gap-2 text-xs">
+        <span className="text-stone-400 font-bold text-[11px] uppercase tracking-wider flex items-center gap-1.5 mr-1">
+          <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+          Quick Test Commuter Passes:
+        </span>
+        <button
+          type="button"
+          onClick={() => {
+            setInputQuery("RS-MUM-2026-782145");
+            runVerification("RS-MUM-2026-782145");
+          }}
+          className="px-3 py-1 rounded-full bg-emerald-500/15 hover:bg-emerald-500/25 border border-emerald-500/30 text-emerald-300 font-medium text-[11px] transition-colors cursor-pointer flex items-center gap-1.5"
+        >
+          <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+          <span>Valid BEST Bus Pass</span>
+        </button>
+        <button
+          type="button"
+          onClick={() => {
+            setInputQuery("RS-MUM-2026-894120");
+            runVerification("RS-MUM-2026-894120");
+          }}
+          className="px-3 py-1 rounded-full bg-cyan-500/15 hover:bg-cyan-500/25 border border-cyan-500/30 text-cyan-300 font-medium text-[11px] transition-colors cursor-pointer flex items-center gap-1.5"
+        >
+          <span className="w-1.5 h-1.5 rounded-full bg-cyan-400" />
+          <span>Valid Train EMU Pass</span>
+        </button>
+        <button
+          type="button"
+          onClick={() => {
+            setInputQuery("RS-MUM-2026-697989");
+            runVerification("RS-MUM-2026-697989");
+          }}
+          className="px-3 py-1 rounded-full bg-amber-500/15 hover:bg-amber-500/25 border border-amber-500/30 text-amber-300 font-medium text-[11px] transition-colors cursor-pointer flex items-center gap-1.5"
+        >
+          <span className="w-1.5 h-1.5 rounded-full bg-amber-400" />
+          <span>Conductor Punched Pass</span>
+        </button>
+        <button
+          type="button"
+          onClick={() => {
+            setInputQuery("RS-MUM-2026-302194");
+            runVerification("RS-MUM-2026-302194");
+          }}
+          className="px-3 py-1 rounded-full bg-rose-500/15 hover:bg-rose-500/25 border border-rose-500/30 text-rose-300 font-medium text-[11px] transition-colors cursor-pointer flex items-center gap-1.5"
+        >
+          <span className="w-1.5 h-1.5 rounded-full bg-rose-400" />
+          <span>Expired Pass</span>
+        </button>
+      </div>
+
       {/* Query Search / Scan Bar */}
       <div className="bg-stone-900/90 border border-white/10 rounded-[24px] p-4 shadow-xl">
         <form
@@ -175,8 +228,26 @@ function TicketVerificationContent() {
               placeholder="Enter Ticket Number (RS-MUM-2026-...), PNR, or paste QR token..."
               value={inputQuery}
               onChange={(e) => setInputQuery(e.target.value)}
-              className="w-full bg-black/40 border border-white/10 rounded-2xl pl-10 pr-4 py-2.5 text-xs text-white placeholder-stone-500 focus:outline-none focus:border-rose-500 transition-colors font-mono"
+              className="w-full bg-black/40 border border-white/10 rounded-2xl pl-10 pr-16 py-2.5 text-xs text-white placeholder-stone-500 focus:outline-none focus:border-rose-500 transition-colors font-mono"
             />
+            {typeof window !== "undefined" && navigator?.clipboard && (
+              <button
+                type="button"
+                onClick={async () => {
+                  try {
+                    const text = await navigator.clipboard.readText();
+                    if (text) {
+                      setInputQuery(text);
+                      runVerification(text);
+                    }
+                  } catch {}
+                }}
+                className="absolute right-2.5 top-2 px-2.5 py-1 rounded-lg bg-white/10 hover:bg-white/20 text-stone-300 hover:text-white text-[10px] font-bold transition-all cursor-pointer"
+                title="Paste from clipboard"
+              >
+                Paste
+              </button>
+            )}
           </div>
 
           <button

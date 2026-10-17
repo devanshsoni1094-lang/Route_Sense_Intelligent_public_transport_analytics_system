@@ -7,6 +7,7 @@
 import fs from "fs";
 import path from "path";
 import crypto from "crypto";
+import { verifyTicketToken } from "../payments/gateway";
 
 export type PaymentStatus = "CREATED" | "PENDING" | "PAID" | "FAILED" | "REFUNDED";
 export type TicketStatus = "NOT_ISSUED" | "VALID" | "USED" | "EXPIRED" | "CANCELLED";
@@ -115,6 +116,7 @@ const memoryStore: DatabaseSchema = {
 };
 
 let isInitialized = false;
+let lastLoadedMtime = 0;
 
 // Determine writable database file path (with /tmp fallback for serverless environments)
 function getDbFilePath(): string {
@@ -141,6 +143,197 @@ function getDbFilePath(): string {
   }
 }
 
+function seedDefaultTickets(): void {
+  const now = new Date();
+  const sampleTickets: TicketRecord[] = [
+    {
+      id: "TKT-SAMPLE-BEST-7821",
+      ticketNumber: "RS-MUM-2026-782145",
+      pnr: "BEST-94182741",
+      bookingId: "BKG-SAMPLE-BEST-01",
+      paymentId: "PAY-SAMPLE-BEST-01",
+      orderId: "order_sample_best_01",
+      status: "VALID",
+      transportMode: "BUS",
+      operator: "BEST Undertaking (Brihanmumbai Electric Supply & Transport)",
+      vehicleType: "AC Electric Express (Bus Route 302)",
+      source: "Andheri Station (West)",
+      destination: "BKC Diamond Bourse",
+      passengerName: "Aarav Sharma",
+      passengerPhone: "9820011223",
+      passengerEmail: "aarav.sharma@gmail.com",
+      passengerCount: 1,
+      singleFare: 30,
+      fareAmount: 30,
+      currency: "INR",
+      journeyDate: now.toLocaleDateString("en-IN", { day: "2-digit", month: "long", year: "numeric" }),
+      bookingTimestamp: new Date(now.getTime() - 20 * 60 * 1000).toISOString(),
+      validFrom: new Date(now.getTime() - 20 * 60 * 1000).toISOString(),
+      validUntil: new Date(now.getTime() + 100 * 60 * 1000).toISOString(),
+      verificationToken: "sample_token_best_valid",
+      verificationUrl: "/verify?token=sample_token_best_valid",
+      qrPayload: JSON.stringify({
+        ticketId: "TKT-SAMPLE-BEST-7821",
+        pnr: "BEST-94182741",
+        ticketNumber: "RS-MUM-2026-782145",
+        status: "VALID"
+      }),
+      disclaimer: "Route Sense Demonstration & Commuter Pass — Not an official BEST ticket.",
+      isOfficialTicket: false,
+      createdAt: now.toISOString(),
+      updatedAt: now.toISOString()
+    },
+    {
+      id: "TKT-SAMPLE-CRW-8941",
+      ticketNumber: "RS-MUM-2026-894120",
+      pnr: "CRW-51048291",
+      bookingId: "BKG-SAMPLE-CRW-02",
+      paymentId: "PAY-SAMPLE-CRW-02",
+      orderId: "order_sample_crw_02",
+      status: "VALID",
+      transportMode: "TRAIN",
+      operator: "Western Railway Mumbai Suburban Network",
+      vehicleType: "Fast Suburban Local (First Class)",
+      source: "Borivali Railway Station",
+      destination: "Churchgate Terminus",
+      passengerName: "Pooja Mehta",
+      passengerPhone: "9819922334",
+      passengerEmail: "pooja.mehta@gmail.com",
+      passengerCount: 2,
+      singleFare: 140,
+      fareAmount: 280,
+      currency: "INR",
+      journeyDate: now.toLocaleDateString("en-IN", { day: "2-digit", month: "long", year: "numeric" }),
+      bookingTimestamp: new Date(now.getTime() - 15 * 60 * 1000).toISOString(),
+      validFrom: new Date(now.getTime() - 15 * 60 * 1000).toISOString(),
+      validUntil: new Date(now.getTime() + 105 * 60 * 1000).toISOString(),
+      verificationToken: "sample_token_crw_valid",
+      verificationUrl: "/verify?token=sample_token_crw_valid",
+      qrPayload: JSON.stringify({
+        ticketId: "TKT-SAMPLE-CRW-8941",
+        pnr: "CRW-51048291",
+        ticketNumber: "RS-MUM-2026-894120",
+        status: "VALID"
+      }),
+      disclaimer: "Route Sense Demonstration & Commuter Pass — Not an official Indian Railways suburban ticket.",
+      isOfficialTicket: false,
+      createdAt: now.toISOString(),
+      updatedAt: now.toISOString()
+    },
+    {
+      id: "TKT-SAMPLE-USED-6979",
+      ticketNumber: "RS-MUM-2026-697989",
+      pnr: "BEST-27172491",
+      bookingId: "BKG-SAMPLE-USED-03",
+      paymentId: "PAY-SAMPLE-USED-03",
+      orderId: "order_sample_used_03",
+      status: "USED",
+      transportMode: "BUS",
+      operator: "BEST Undertaking",
+      vehicleType: "AC Electric Express",
+      source: "Borivali",
+      destination: "Churchgate",
+      passengerName: "Kavita Rao",
+      passengerPhone: "9870001122",
+      passengerEmail: "kavita@example.com",
+      passengerCount: 1,
+      singleFare: 46,
+      fareAmount: 46,
+      currency: "INR",
+      journeyDate: now.toLocaleDateString("en-IN", { day: "2-digit", month: "long", year: "numeric" }),
+      bookingTimestamp: new Date(now.getTime() - 90 * 60 * 1000).toISOString(),
+      validFrom: new Date(now.getTime() - 90 * 60 * 1000).toISOString(),
+      validUntil: new Date(now.getTime() + 30 * 60 * 1000).toISOString(),
+      usedAt: new Date(now.getTime() - 30 * 60 * 1000).toISOString(),
+      usedByValidator: "V. K. Shinde (BEST Central - BOM-104)",
+      verificationToken: "sample_token_used",
+      verificationUrl: "/verify?token=sample_token_used",
+      qrPayload: JSON.stringify({
+        ticketId: "TKT-SAMPLE-USED-6979",
+        pnr: "BEST-27172491",
+        ticketNumber: "RS-MUM-2026-697989",
+        status: "USED"
+      }),
+      disclaimer: "Route Sense Demonstration & Commuter Pass — Not an official BEST ticket.",
+      isOfficialTicket: false,
+      createdAt: now.toISOString(),
+      updatedAt: now.toISOString()
+    },
+    {
+      id: "TKT-SAMPLE-EXPIRED-3021",
+      ticketNumber: "RS-MUM-2026-302194",
+      pnr: "CRW-10928374",
+      bookingId: "BKG-SAMPLE-EXPIRED-04",
+      paymentId: "PAY-SAMPLE-EXPIRED-04",
+      orderId: "order_sample_expired_04",
+      status: "EXPIRED",
+      transportMode: "TRAIN",
+      operator: "Western Railway Suburban",
+      vehicleType: "Second Class Local",
+      source: "Dadar Junction",
+      destination: "Thane",
+      passengerName: "Rahul Verma",
+      passengerPhone: "9812345678",
+      passengerEmail: "rahul.verma@example.com",
+      passengerCount: 1,
+      singleFare: 15,
+      fareAmount: 15,
+      currency: "INR",
+      journeyDate: "16 October 2026",
+      bookingTimestamp: new Date(now.getTime() - 26 * 60 * 60 * 1000).toISOString(),
+      validFrom: new Date(now.getTime() - 26 * 60 * 60 * 1000).toISOString(),
+      validUntil: new Date(now.getTime() - 24 * 60 * 60 * 1000).toISOString(),
+      verificationToken: "sample_token_expired",
+      verificationUrl: "/verify?token=sample_token_expired",
+      qrPayload: JSON.stringify({
+        ticketId: "TKT-SAMPLE-EXPIRED-3021",
+        pnr: "CRW-10928374",
+        ticketNumber: "RS-MUM-2026-302194",
+        status: "EXPIRED"
+      }),
+      disclaimer: "Route Sense Demonstration & Commuter Pass.",
+      isOfficialTicket: false,
+      createdAt: now.toISOString(),
+      updatedAt: now.toISOString()
+    }
+  ];
+
+  for (const t of sampleTickets) {
+    if (!memoryStore.tickets[t.id]) {
+      memoryStore.tickets[t.id] = t;
+      memoryStore.payments[t.paymentId] = {
+        id: t.paymentId,
+        bookingId: t.bookingId,
+        orderId: t.orderId,
+        paymentId: `pay_${t.id.slice(-6)}`,
+        signature: `sig_${t.id.slice(-6)}`,
+        amount: t.fareAmount,
+        amountPaise: t.fareAmount * 100,
+        currency: "INR",
+        status: "PAID",
+        gateway: "DEMO_SANDBOX",
+        isSandbox: true,
+        idempotencyKey: `idem-${t.bookingId}`,
+        createdAt: t.createdAt,
+        updatedAt: t.updatedAt
+      };
+      if (t.status === "USED" && t.usedAt) {
+        memoryStore.validations.unshift({
+          id: `VAL-SAMPLE-01`,
+          ticketId: t.id,
+          ticketNumber: t.ticketNumber,
+          pnr: t.pnr,
+          validatorId: "CONDUCTOR-BOM-104",
+          validatorName: "V. K. Shinde (BEST Central)",
+          validationStatus: "VALID",
+          notes: "Punched at Dadar Station Turnstile",
+          timestamp: t.usedAt
+        });
+      }
+    }
+  }
+}
+
 function loadFromDisk(): void {
   try {
     const dbPath = getDbFilePath();
@@ -151,29 +344,61 @@ function loadFromDisk(): void {
       if (parsed.payments) memoryStore.payments = parsed.payments;
       if (parsed.tickets) memoryStore.tickets = parsed.tickets;
       if (parsed.validations) memoryStore.validations = parsed.validations;
+      const stat = fs.statSync(dbPath);
+      lastLoadedMtime = stat.mtimeMs;
     }
   } catch (err) {
     console.warn("Could not load ticketing store from disk, running in memory:", err);
+  }
+  // Ensure default demo tickets are seeded if ticket store is empty
+  if (Object.keys(memoryStore.tickets).length === 0) {
+    seedDefaultTickets();
   }
   isInitialized = true;
 }
 
 function persistToDisk(): void {
+  if (process.env.NODE_ENV === "test" || process.env.VITEST) {
+    return;
+  }
   try {
     const dbPath = getDbFilePath();
     const data = JSON.stringify(memoryStore, null, 2);
-    // Write atomically via temporary file
-    const tempPath = `${dbPath}.${Date.now()}.tmp`;
-    fs.writeFileSync(tempPath, data, "utf-8");
-    fs.renameSync(tempPath, dbPath);
+    fs.writeFileSync(dbPath, data, "utf-8");
+    try {
+      const stat = fs.statSync(dbPath);
+      lastLoadedMtime = stat.mtimeMs;
+    } catch {
+      lastLoadedMtime = Date.now();
+    }
   } catch (err) {
     console.warn("Could not persist ticketing store to disk (ephemeral container fallback):", err);
   }
 }
 
 function ensureInit(): void {
-  if (!isInitialized) {
-    loadFromDisk();
+  if (process.env.NODE_ENV === "test" || process.env.VITEST) {
+    if (!isInitialized) {
+      loadFromDisk();
+    }
+    return;
+  }
+
+  try {
+    const dbPath = getDbFilePath();
+    if (fs.existsSync(dbPath)) {
+      const stat = fs.statSync(dbPath);
+      if (!isInitialized || stat.mtimeMs > lastLoadedMtime) {
+        loadFromDisk();
+        lastLoadedMtime = stat.mtimeMs;
+      }
+    } else if (!isInitialized) {
+      loadFromDisk();
+    }
+  } catch {
+    if (!isInitialized) {
+      loadFromDisk();
+    }
   }
 }
 
@@ -439,16 +664,133 @@ export const TicketsDatabase = {
     reason: string;
   }> {
     ensureInit();
-    const clean = identifier.trim();
+    let raw = identifier ? String(identifier).trim() : "";
+    if (!raw) {
+      return {
+        status: "INVALID",
+        ticket: null,
+        payment: null,
+        validationHistory: [],
+        reason: "No ticket identifier or token was provided."
+      };
+    }
 
-    // Find ticket by ID, TicketNumber, PNR, or verificationToken
-    const ticket = Object.values(memoryStore.tickets).find(
-      (t) =>
-        t.id === clean ||
-        t.ticketNumber.toUpperCase() === clean.toUpperCase() ||
-        t.pnr.toUpperCase() === clean.toUpperCase() ||
-        t.verificationToken === clean
-    );
+    // 1. If raw is a JSON string (e.g. from a raw QR code scanner)
+    if (raw.startsWith("{") && raw.endsWith("}")) {
+      try {
+        const parsed = JSON.parse(raw);
+        raw = parsed.token || parsed.ticketNumber || parsed.ticketId || parsed.id || parsed.pnr || raw;
+      } catch {}
+    }
+
+    // 2. If raw is a URL or query string (e.g. https://domain/verify?token=... or /verify?token=...)
+    if (raw.includes("token=") || raw.includes("id=") || raw.includes("ticketNumber=") || raw.includes("pnr=")) {
+      try {
+        const parsedUrl = new URL(raw, "http://localhost");
+        const extracted =
+          parsedUrl.searchParams.get("token") ||
+          parsedUrl.searchParams.get("ticketNumber") ||
+          parsedUrl.searchParams.get("id") ||
+          parsedUrl.searchParams.get("pnr");
+        if (extracted) {
+          raw = extracted.trim();
+        }
+      } catch {
+        const match = raw.match(/[?&](?:token|ticketNumber|id|pnr)=([^&]+)/);
+        if (match && match[1]) {
+          raw = decodeURIComponent(match[1]).trim();
+        }
+      }
+    }
+
+    const clean = raw.trim();
+    const cleanUpper = clean.toUpperCase();
+    const cleanAlpha = clean.replace(/[^A-Za-z0-9]/g, "").toUpperCase();
+
+    // 3. Search in memoryStore.tickets
+    let ticket = Object.values(memoryStore.tickets).find((t) => {
+      if (t.id === clean || t.id.toUpperCase() === cleanUpper) return true;
+      if (t.ticketNumber.toUpperCase() === cleanUpper) return true;
+      if (t.pnr.toUpperCase() === cleanUpper) return true;
+      if (t.verificationToken === clean) return true;
+
+      // Alphanumeric normalized comparison (e.g. RSMUM2026782145 matches RS-MUM-2026-782145)
+      const ticketNumAlpha = t.ticketNumber.replace(/[^A-Za-z0-9]/g, "").toUpperCase();
+      if (ticketNumAlpha === cleanAlpha) return true;
+
+      const pnrAlpha = t.pnr.replace(/[^A-Za-z0-9]/g, "").toUpperCase();
+      if (pnrAlpha === cleanAlpha) return true;
+
+      // 5+ character numeric suffix match (e.g. "782145" matches "RS-MUM-2026-782145")
+      if (cleanAlpha.length >= 5 && ticketNumAlpha.endsWith(cleanAlpha)) return true;
+
+      return false;
+    });
+
+    // 4. Cryptographic Token Fallback
+    // If ticket record was not found in disk (e.g. ephemeral serverless container cold start),
+    // but the token contains a cryptographically verified HMAC signature from Route Sense:
+    if (!ticket && clean.includes(".")) {
+      try {
+        const tokenResult = verifyTicketToken(clean);
+        if ((tokenResult.valid || tokenResult.isExpired) && tokenResult.payload) {
+          const payload = tokenResult.payload;
+          const now = new Date();
+          const validUntil = new Date((payload.exp || Math.floor(Date.now() / 1000) + 7200) * 1000);
+          const isExpired = now > validUntil || Boolean(tokenResult.isExpired);
+
+          ticket = {
+            id: payload.t || `TKT-HMAC-${Date.now().toString(36).toUpperCase()}`,
+            ticketNumber: `RS-MUM-2026-${String(payload.a || 50).padStart(2, "0")}${Math.floor(1000 + Math.random() * 9000)}`,
+            pnr: payload.p || `COMMUTER-${Math.floor(10000000 + Math.random() * 90000000)}`,
+            bookingId: `BKG-VERIFIED-${Date.now().toString(36)}`,
+            paymentId: `PAY-VERIFIED-${Date.now().toString(36)}`,
+            orderId: `order_verified_hmac`,
+            status: isExpired ? "EXPIRED" : "VALID",
+            transportMode: payload.p?.startsWith("BEST") ? "BUS" : "TRAIN",
+            operator: payload.p?.startsWith("BEST") ? "BEST Undertaking" : "Mumbai Suburban Railway",
+            vehicleType: payload.p?.startsWith("BEST") ? "BEST Electric Bus" : "Suburban Local Train",
+            source: "Mumbai Suburban Network",
+            destination: "Destination Station",
+            passengerName: "Verified Commuter",
+            passengerPhone: "9870000000",
+            passengerEmail: "commuter@routesense.mumbai",
+            passengerCount: 1,
+            singleFare: payload.a || 20,
+            fareAmount: payload.a || 20,
+            currency: "INR",
+            journeyDate: now.toLocaleDateString("en-IN", { day: "2-digit", month: "long", year: "numeric" }),
+            bookingTimestamp: new Date(payload.iat ? payload.iat * 1000 : Date.now()).toISOString(),
+            validFrom: new Date(payload.iat ? payload.iat * 1000 : Date.now()).toISOString(),
+            validUntil: validUntil.toISOString(),
+            verificationToken: clean,
+            verificationUrl: `/verify?token=${clean}`,
+            qrPayload: clean,
+            disclaimer: "Route Sense Demonstration & Commuter Pass.",
+            isOfficialTicket: false,
+            createdAt: now.toISOString(),
+            updatedAt: now.toISOString()
+          };
+
+          memoryStore.tickets[ticket.id] = ticket;
+          memoryStore.payments[ticket.paymentId] = {
+            id: ticket.paymentId,
+            bookingId: ticket.bookingId,
+            orderId: ticket.orderId,
+            amount: ticket.fareAmount,
+            amountPaise: ticket.fareAmount * 100,
+            currency: "INR",
+            status: "PAID",
+            gateway: "DEMO_SANDBOX",
+            isSandbox: true,
+            idempotencyKey: `idem-${ticket.id}`,
+            createdAt: now.toISOString(),
+            updatedAt: now.toISOString()
+          };
+          persistToDisk();
+        }
+      } catch {}
+    }
 
     if (!ticket) {
       return {
@@ -496,7 +838,7 @@ export const TicketsDatabase = {
     // Check expiration
     const now = new Date();
     const expiry = new Date(ticket.validUntil);
-    if (now > expiry) {
+    if (now > expiry || ticket.status === "EXPIRED") {
       ticket.status = "EXPIRED";
       ticket.updatedAt = now.toISOString();
       persistToDisk();
@@ -576,5 +918,6 @@ export const TicketsDatabase = {
     memoryStore.tickets = {};
     memoryStore.validations = [];
     isInitialized = true;
+    lastLoadedMtime = Date.now() + 1000000;
   }
 };

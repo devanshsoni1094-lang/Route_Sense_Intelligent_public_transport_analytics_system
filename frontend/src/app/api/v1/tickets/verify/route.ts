@@ -1,11 +1,17 @@
 import { NextRequest, NextResponse } from "next/server";
 import { TicketsDatabase } from "@/lib/db/ticketsDb";
-import { verifyTicketToken } from "@/lib/payments/gateway";
 
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json();
-    let identifier = body.token || body.ticketNumber || body.ticketId || body.id;
+    const body = await request.json().catch(() => ({}));
+    let identifier =
+      body.token ||
+      body.ticketNumber ||
+      body.ticketId ||
+      body.id ||
+      body.pnr ||
+      body.query ||
+      body.data;
 
     if (!identifier || typeof identifier !== "string") {
       return NextResponse.json(
@@ -18,46 +24,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    identifier = identifier.trim();
-
-    // If identifier is a full URL (e.g. from QR scanner), extract query parameter
-    if (identifier.includes("token=") || identifier.includes("id=") || identifier.includes("ticketNumber=")) {
-      try {
-        const parsedUrl = new URL(identifier, "http://localhost");
-        const extracted =
-          parsedUrl.searchParams.get("token") ||
-          parsedUrl.searchParams.get("ticketNumber") ||
-          parsedUrl.searchParams.get("id");
-        if (extracted) {
-          identifier = extracted;
-        }
-      } catch {
-        // Continue with original identifier
-      }
-    }
-
-    // 1. If it looks like a cryptographic token (base64url.signature)
-    let tokenTicketId: string | null = null;
-    if (identifier.includes(".")) {
-      const tokenResult = verifyTicketToken(identifier);
-      if (!tokenResult.valid) {
-        return NextResponse.json(
-          {
-            status: "INVALID",
-            ticket: null,
-            payment: null,
-            validationHistory: [],
-            reason: `Cryptographic signature validation failed: ${tokenResult.reason}`
-          },
-          { status: 200 }
-        );
-      }
-      tokenTicketId = tokenResult.payload?.t || null;
-    }
-
-    // 2. Query database for ticket and server-side payment record
-    const lookupId = tokenTicketId || identifier;
-    const verification = await TicketsDatabase.verifyTicket(lookupId);
+    const verification = await TicketsDatabase.verifyTicket(identifier);
 
     return NextResponse.json({
       status: verification.status,
@@ -94,35 +61,21 @@ export async function POST(request: NextRequest) {
 
 export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams;
-  const token = searchParams.get("token") || searchParams.get("id") || searchParams.get("ticketNumber");
+  const token =
+    searchParams.get("token") ||
+    searchParams.get("id") ||
+    searchParams.get("ticketNumber") ||
+    searchParams.get("pnr") ||
+    searchParams.get("query");
 
   if (!token) {
     return NextResponse.json(
-      { error: "MISSING_PARAM", message: "Query parameter 'token' or 'id' required" },
+      { error: "MISSING_PARAM", message: "Query parameter 'token', 'id', or 'ticketNumber' required" },
       { status: 400 }
     );
   }
 
-  // Delegate to same logic as POST
-  let lookupId = token;
-  if (token.includes(".")) {
-    const tokenResult = verifyTicketToken(token);
-    if (!tokenResult.valid) {
-      return NextResponse.json(
-        {
-          status: "INVALID",
-          ticket: null,
-          payment: null,
-          validationHistory: [],
-          reason: `Cryptographic signature validation failed: ${tokenResult.reason}`
-        },
-        { status: 200 }
-      );
-    }
-    lookupId = tokenResult.payload?.t || token;
-  }
-
-  const verification = await TicketsDatabase.verifyTicket(lookupId);
+  const verification = await TicketsDatabase.verifyTicket(token);
 
   return NextResponse.json({
     status: verification.status,

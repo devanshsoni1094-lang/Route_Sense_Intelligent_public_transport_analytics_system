@@ -1,6 +1,7 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
+import { useAuth } from "@/context/AuthContext";
 import {
   Ticket,
   ShieldCheck,
@@ -52,10 +53,18 @@ export const BookingSection: React.FC<BookingSectionProps> = ({
   const [customDistanceKm, setCustomDistanceKm] = useState(initialDistanceKm);
 
   // Commuter Form State
-  const [passengerName, setPassengerName] = useState("Devansh Soni");
+  const { user } = useAuth();
+  const [passengerName, setPassengerName] = useState(user?.name || "Devansh Soni");
   const [passengerPhone, setPassengerPhone] = useState("9876543210");
-  const [passengerEmail, setPassengerEmail] = useState("devansh@routesense.in");
+  const [passengerEmail, setPassengerEmail] = useState(user?.email || "devansh.soni@gmail.com");
   const [numPassengers, setNumPassengers] = useState(1);
+
+  useEffect(() => {
+    if (user) {
+      if (user.name) setPassengerName(user.name);
+      if (user.email) setPassengerEmail(user.email);
+    }
+  }, [user]);
 
   // Backend Order & Verified Ticket State
   const [orderData, setOrderData] = useState<{

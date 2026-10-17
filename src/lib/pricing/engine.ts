@@ -1350,7 +1350,7 @@ export function generateNormalizedJourneyOptions(params: PricingEngineParams): N
       availability_status: "AVAILABLE",
       departure_at: getISTTimeString(departureTime, 2),
       arrival_at: getISTTimeString(departureTime, 2 + autoDur),
-      traffic_status: "GPS Live Tracked Auto",
+      traffic_status: "Metered Auto (RTO Sept 2026)",
       source_name: "Uber Auto 2026 Benchmark (~₹121 for 10km)",
       source_record_id: "UBER-AUTO-2026",
       observed_at: observedAt,

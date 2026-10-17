@@ -267,6 +267,7 @@ export function signTicketToken(params: {
  */
 export function verifyTicketToken(token: string): {
   valid: boolean;
+  isExpired?: boolean;
   payload?: any;
   reason?: string;
 } {
@@ -297,10 +298,10 @@ export function verifyTicketToken(token: string): {
     const now = Math.floor(Date.now() / 1000);
 
     if (decoded.exp && now > decoded.exp) {
-      return { valid: false, payload: decoded, reason: "Ticket validity duration has expired" };
+      return { valid: false, isExpired: true, payload: decoded, reason: "Ticket validity duration has expired" };
     }
 
-    return { valid: true, payload: decoded };
+    return { valid: true, isExpired: false, payload: decoded };
   } catch (err: any) {
     return { valid: false, reason: `Token decode error: ${err?.message || "Invalid payload"}` };
   }
