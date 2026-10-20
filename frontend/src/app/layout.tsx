@@ -56,22 +56,22 @@ export default function RootLayout({
               <Compass className="w-4 h-4" />
             </a>
 
-            {/* Book E-Ticket & Pass */}
+            {/* 5-Parameter Journey Analysis */}
             <a
-              href="#booking-section"
-              title="Book Bus & Train E-Ticket (QR Pay)"
+              href="#journey-analysis"
+              title="5-Parameter Journey Analysis"
               className="w-9 h-9 rounded-full hover:bg-white/10 text-slate-400 hover:text-white flex items-center justify-center transition-all cursor-pointer"
             >
-              <Ticket className="w-4 h-4" />
+              <BarChart2 className="w-4 h-4" />
             </a>
 
-            {/* Verify Ticket Validator Portal */}
+            {/* Spatial Route Map */}
             <a
-              href="/verify"
-              title="Ticket Verification Portal"
+              href="#spatial-map"
+              title="Spatial Corridor Map"
               className="w-9 h-9 rounded-full hover:bg-white/10 text-slate-400 hover:text-white flex items-center justify-center transition-all cursor-pointer"
             >
-              <Lock className="w-4 h-4" />
+              <MapPin className="w-4 h-4" />
             </a>
           </aside>
 

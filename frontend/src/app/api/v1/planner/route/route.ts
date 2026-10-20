@@ -112,14 +112,14 @@ export async function GET(request: NextRequest) {
 
   // Restrict journey planning strictly to Mumbai Metropolitan Region (MMR)
   const originInMMR =
-    isWithinMumbaiMMR(resolvedOrigin.latitude, resolvedOrigin.longitude, originQuery) &&
+    isWithinMumbaiMMR(resolvedOrigin.latitude, resolvedOrigin.longitude, originQuery) ||
     isWithinMumbaiMMR(
       resolvedOrigin.latitude,
       resolvedOrigin.longitude,
       `${resolvedOrigin.displayName} ${resolvedOrigin.formattedAddress} ${resolvedOrigin.city}`
     );
   const destInMMR =
-    isWithinMumbaiMMR(resolvedDest.latitude, resolvedDest.longitude, destinationQuery) &&
+    isWithinMumbaiMMR(resolvedDest.latitude, resolvedDest.longitude, destinationQuery) ||
     isWithinMumbaiMMR(
       resolvedDest.latitude,
       resolvedDest.longitude,

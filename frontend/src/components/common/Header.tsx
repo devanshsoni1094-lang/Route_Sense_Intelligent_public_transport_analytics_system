@@ -7,13 +7,11 @@ import {
   Bell,
   Search,
   ChevronDown,
-  Sparkles,
   ShieldCheck,
   User,
   LogOut,
-  Ticket,
   ExternalLink,
-  QrCode
+  BarChart2
 } from "lucide-react";
 import { fetchApi } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
@@ -105,24 +103,24 @@ export const Header: React.FC = () => {
           />
         </div>
 
-        <Link
-          href="/verify"
+        <a
+          href="#journey-analysis"
           className="px-3.5 py-2 rounded-full bg-white/10 hover:bg-white/15 border border-white/15 text-xs text-slate-200 font-medium flex items-center gap-1.5 transition-colors cursor-pointer shadow-sm"
         >
-          <QrCode className="w-3.5 h-3.5 text-sky-400" />
-          <span>Verify Ticket</span>
-        </Link>
+          <BarChart2 className="w-3.5 h-3.5 text-sky-400" />
+          <span>5-Parameter Analysis</span>
+        </a>
       </div>
 
-      {/* Right Actions: Status, Book Pass & User Profile */}
+      {/* Right Actions: Status, Spatial Map & User Profile */}
       <div className="flex items-center gap-3">
-        {/* Quick Link to Ticket Booking Section */}
+        {/* Quick Link to Spatial Route Map */}
         <a
-          href="#booking-section"
+          href="#spatial-map"
           className="px-4 py-2 rounded-full bg-white hover:bg-slate-100 text-slate-900 font-extrabold text-xs flex items-center gap-1.5 shadow-lg shadow-black/40 hover:scale-105 active:scale-95 transition-all cursor-pointer"
         >
-          <Sparkles className="w-3.5 h-3.5 text-sky-600" />
-          <span>Book Ticket (QR Pay)</span>
+          <Compass className="w-3.5 h-3.5 text-sky-600" />
+          <span>Spatial Map</span>
         </a>
 
         {/* Transit Connectivity Pill */}
@@ -198,22 +196,22 @@ export const Header: React.FC = () => {
                 {/* Menu Links */}
                 <div className="py-2 space-y-1">
                   <a
-                    href="#booking-section"
+                    href="#journey-analysis"
                     onClick={() => setDropdownOpen(false)}
                     className="flex items-center gap-2 px-2.5 py-2 rounded-xl text-slate-200 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
                   >
-                    <Ticket className="w-3.5 h-3.5 text-sky-400" />
-                    <span>My Booked Passes</span>
+                    <BarChart2 className="w-3.5 h-3.5 text-sky-400" />
+                    <span>5-Parameter Journey Analysis</span>
                   </a>
 
-                  <Link
-                    href="/verify"
+                  <a
+                    href="#spatial-map"
                     onClick={() => setDropdownOpen(false)}
                     className="flex items-center gap-2 px-2.5 py-2 rounded-xl text-slate-200 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
                   >
-                    <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
-                    <span>Ticket Validator Portal</span>
-                  </Link>
+                    <Compass className="w-3.5 h-3.5 text-emerald-400" />
+                    <span>Spatial Corridor Map</span>
+                  </a>
                 </div>
 
                 {/* Sign Out */}

@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from "react";
 import {
   Sparkles,
-  Ticket,
+  BarChart3,
   Compass,
   Star,
   MapPin,
@@ -144,7 +144,7 @@ export const TravelHeroSpotlight: React.FC<TravelHeroSpotlightProps> = ({
 
           {/* Subtitle */}
           <p className="mt-3 text-xs sm:text-sm text-slate-200/90 font-normal leading-relaxed max-w-lg">
-            Experience intelligent Mumbai transit with verified BEST bus &amp; suburban railway fares, traffic-aware schedules, and authenticated digital e-tickets.
+            Experience intelligent Mumbai transit with verified BEST bus &amp; suburban railway fares, traffic-aware schedules, and 5-parameter spatial transit intelligence.
           </p>
 
           {/* Action Buttons: Pure White Pill + Frosted Circular Action */}
@@ -158,22 +158,21 @@ export const TravelHeroSpotlight: React.FC<TravelHeroSpotlightProps> = ({
               <ArrowRight className="w-3.5 h-3.5" />
             </a>
 
-            {/* Secondary Action: Frosted Play Circle Button */}
-            <button
-              type="button"
-              onClick={() => onGetPass(activePass as any)}
+            {/* Secondary Action: Frosted 5-Parameter Analysis Action */}
+            <a
+              href="#journey-analysis"
               className="group flex items-center gap-3 px-3 py-1.5 rounded-full bg-white/10 hover:bg-white/15 border border-white/20 backdrop-blur-xl transition-all cursor-pointer"
             >
               <div className="w-8 h-8 rounded-full bg-white/20 group-hover:bg-sky-400/30 flex items-center justify-center text-white transition-all shadow-sm">
-                <Play className="w-3.5 h-3.5 fill-white text-white ml-0.5" />
+                <BarChart3 className="w-3.5 h-3.5 text-white" />
               </div>
               <div className="text-left pr-2">
-                <p className="text-xs font-bold text-white leading-tight">Instant E-Pass</p>
+                <p className="text-xs font-bold text-white leading-tight">5-Parameter Analysis</p>
                 <p className="text-[10px] text-sky-300">
-                  ₹{recommendedOption?.quoted_price_inr ?? recommendedOption?.fare_inr ?? 10} &bull; QR Pay
+                  Speed &bull; Cost &bull; Carbon &bull; Comfort &bull; Friction
                 </p>
               </div>
-            </button>
+            </a>
           </div>
         </div>
 
@@ -306,9 +305,9 @@ export const TravelHeroSpotlight: React.FC<TravelHeroSpotlightProps> = ({
 
         <div className="h-3 w-[1px] bg-white/20 hidden sm:block" />
 
-        <div className="flex items-center gap-1.5 text-emerald-300 font-semibold text-[11px]">
-          <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
-          <span>100% Authenticated QR Passes</span>
+        <div className="flex items-center gap-1.5 text-sky-300 font-semibold text-[11px]">
+          <BarChart3 className="w-3.5 h-3.5 text-sky-400" />
+          <span>5-Parameter Spatial Intelligence</span>
         </div>
       </div>
 

@@ -30,14 +30,14 @@ import {
   Brain,
   Coins,
   Armchair,
-  Gauge
+  Gauge,
+  BarChart2
 } from "lucide-react";
 import { MultiModalOption, ResolvedLocation, RouteStep } from "@/types";
 import { fetchApi } from "@/lib/api";
 import { LocationAutocomplete } from "@/components/common/LocationAutocomplete";
 import { InteractiveMap } from "@/components/common/InteractiveMap";
-import { BookingModal } from "@/components/booking/BookingModal";
-import { BookingSection } from "@/components/booking/BookingSection";
+import { JourneyFiveParameterAnalysis } from "@/components/analytics/JourneyFiveParameterAnalysis";
 import { TravelHeroSpotlight } from "@/components/home/TravelHeroSpotlight";
 
 // Iconic Mumbai Metropolitan Region (MMR) Commuter Corridors
@@ -378,10 +378,6 @@ export default function HomePage() {
   const [selectedOption, setSelectedOption] = useState<MultiModalOption | null>(null);
   const [highlightedStepIndex, setHighlightedStepIndex] = useState<number | null>(null);
 
-  // Booking Modal State
-  const [isBookingOpen, setIsBookingOpen] = useState(false);
-  const [bookingJourney, setBookingJourney] = useState<MultiModalOption | null>(null);
-
   // Three Smart Filters: SPEED (Fastest Route), CHEAPEST (Lowest Fare), COMFORT (Cabs & AC)
   const [smartFilter, setSmartFilter] = useState<"SPEED" | "CHEAPEST" | "COMFORT">("SPEED");
 
@@ -683,8 +679,7 @@ export default function HomePage() {
           routeOptions={routeOptions}
           onGetPass={(opt) => {
             setSelectedOption(opt);
-            setBookingJourney(opt);
-            setIsBookingOpen(true);
+            document.getElementById("journey-analysis")?.scrollIntoView({ behavior: "smooth" });
           }}
         />
 
@@ -860,18 +855,11 @@ export default function HomePage() {
         </div>
       </div>
 
-      {/* 3.5 DEDICATED MUMBAI TICKET BOOKING & ONLINE QR PAYMENT SECTION */}
-      <BookingSection
-        initialOrigin={sourceLoc?.displayName || sourceText || "Dadar Central Railway Station"}
-        initialDest={destLoc?.displayName || destText || "CSMT Terminus"}
-        initialDistanceKm={selectedOption?.route_distance_km || 10}
-      />
-
-      {/* 4. JOURNEY PASSES GRID */}
+      {/* 4. JOURNEY OPTIONS GRID */}
       <div id="journey-passes" className="w-full">
         <div className="flex items-center justify-between mb-3">
           <h3 className="text-base sm:text-lg font-bold text-white flex items-center gap-2">
-            <span>Available Mumbai Journey Passes</span>
+            <span>Available Mumbai Transit Corridors</span>
             <span className="px-2 py-0.5 rounded-full bg-sky-500/20 text-sky-300 border border-sky-500/30 text-xs font-semibold">
               {sortedAndFilteredOptions.length} Verified Options
             </span>
@@ -1091,20 +1079,19 @@ export default function HomePage() {
                         </span>
                       </div>
 
-                      {/* Price Pill Button (Triggers Booking Modal) */}
+                      {/* Price Pill Button (Selects & Scrolls to 5-Parameter Analysis) */}
                       <button
                         type="button"
                         onClick={(e) => {
                           e.stopPropagation();
                           setSelectedOption(opt);
-                          setBookingJourney(opt);
-                          setIsBookingOpen(true);
+                          document.getElementById("journey-analysis")?.scrollIntoView({ behavior: "smooth" });
                         }}
                         className="px-3.5 py-1.5 rounded-full bg-white/10 hover:bg-white text-white hover:text-slate-900 border border-white/20 font-black text-xs transition-all shadow-sm cursor-pointer flex items-center gap-1 active:scale-95"
                       >
                         <span>₹{opt.quoted_price_inr ?? opt.fare_inr}</span>
                         <span className="text-[10px] text-sky-300 font-medium">
-                          &bull; {opt.transport_mode === "BUS" || opt.transport_mode === "TRAIN" ? "Book Ticket" : "Book Pass"}
+                          &bull; Analyze &rarr;
                         </span>
                       </button>
                     </div>
@@ -1120,7 +1107,19 @@ export default function HomePage() {
         )}
       </div>
 
-      {/* 5. SPATIAL MAP & SELECTED JOURNEY ITINERARY ROW */}
+      {/* 5. TOP 5 PARAMETERS MULTI-CRITERIA JOURNEY ANALYSIS DASHBOARD */}
+      <div id="journey-analysis" className="w-full">
+        <JourneyFiveParameterAnalysis
+          selectedOption={selectedOption}
+          origin={sourceLoc}
+          destination={destLoc}
+          onExploreOnMap={() => {
+            document.getElementById("spatial-map")?.scrollIntoView({ behavior: "smooth" });
+          }}
+        />
+      </div>
+
+      {/* 6. SPATIAL MAP & SELECTED JOURNEY ITINERARY ROW */}
       <div id="spatial-map" className="grid grid-cols-1 lg:grid-cols-12 gap-5 mt-2">
         
         {/* Left Itinerary Breakdown */}
@@ -1275,13 +1274,12 @@ export default function HomePage() {
               <button
                 type="button"
                 onClick={() => {
-                  setBookingJourney(selectedOption);
-                  setIsBookingOpen(true);
+                  document.getElementById("journey-analysis")?.scrollIntoView({ behavior: "smooth" });
                 }}
-                className="w-full mt-4 py-3 rounded-full bg-white hover:bg-slate-100 text-slate-900 font-extrabold text-xs tracking-wider uppercase shadow-xl hover:scale-[1.02] active:scale-95 transition-all flex items-center justify-center gap-2 cursor-pointer"
+                className="w-full mt-4 py-3 rounded-full bg-gradient-to-r from-sky-400 via-teal-400 to-emerald-400 hover:opacity-95 text-slate-950 font-black text-xs tracking-wider uppercase shadow-xl hover:scale-[1.02] active:scale-95 transition-all flex items-center justify-center gap-2 cursor-pointer"
               >
-                <Ticket className="w-4 h-4 text-slate-900" />
-                <span>Book Bus &amp; Train E-Ticket &bull; Pay via QR Code</span>
+                <BarChart2 className="w-4 h-4 text-slate-950" />
+                <span>View 5-Parameter Analysis</span>
               </button>
             )}
           </div>
@@ -1310,16 +1308,6 @@ export default function HomePage() {
           />
         </div>
       </div>
-
-      {/* 6. ONLINE BOOKING & E-TICKET MODAL */}
-      <BookingModal
-        isOpen={isBookingOpen}
-        onClose={() => setIsBookingOpen(false)}
-        journey={bookingJourney || selectedOption}
-        originLocation={sourceLoc}
-        destLocation={destLoc}
-        passengersCount={passengers}
-      />
 
     </div>
   );
