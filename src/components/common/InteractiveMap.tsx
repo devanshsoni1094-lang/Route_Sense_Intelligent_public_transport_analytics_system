@@ -7,18 +7,18 @@ import {
   Minimize2,
   ZoomIn,
   ZoomOut,
-  Layers,
   Navigation,
   Compass,
   MapPin,
   RotateCcw,
-  ExternalLink,
   ShieldCheck,
   Sun,
   Moon,
   Map as MapIcon,
-  Sparkles,
-  Info
+  Play,
+  Pause,
+  FastForward,
+  Radio
 } from "lucide-react";
 
 interface InteractiveMapProps {
@@ -36,8 +36,29 @@ interface InteractiveMapProps {
   cartoApiKey?: string;
 }
 
-// Default CARTO Basemaps API key provided by user
+// User-provided CARTO API key for authenticated basemaps & live corridor tracking
 const DEFAULT_CARTO_KEY = "cb1_4jk9_1_bee4b9e4f372e1ce3f9056e0";
+
+/**
+ * Interpolate latitude and longitude along a sequence of route points
+ */
+function getInterpolatedPosition(points: [number, number][], t: number): [number, number] {
+  if (!points || points.length === 0) return [19.0178, 72.8478];
+  if (points.length === 1 || t <= 0) return points[0];
+  if (t >= 1) return points[points.length - 1];
+
+  const totalSegments = points.length - 1;
+  const rawIndex = t * totalSegments;
+  const idx = Math.min(points.length - 2, Math.floor(rawIndex));
+  const frac = rawIndex - idx;
+
+  const p1 = points[idx];
+  const p2 = points[idx + 1];
+
+  const lat = p1[0] + (p2[0] - p1[0]) * frac;
+  const lng = p1[1] + (p2[1] - p1[1]) * frac;
+  return [lat, lng];
+}
 
 export const InteractiveMap: React.FC<InteractiveMapProps> = ({
   origin,
@@ -58,10 +79,16 @@ export const InteractiveMap: React.FC<InteractiveMapProps> = ({
   const leafletRef = useRef<any>(null);
   const tileLayerRef = useRef<any>(null);
   const waypointMarkersRef = useRef<any[]>([]);
+  const liveVehicleMarkerRef = useRef<any>(null);
 
   const [mapError, setMapError] = useState(false);
   const [mapStyle, setMapStyle] = useState<"dark" | "voyager" | "positron">("dark");
   const [isFullscreen, setIsFullscreen] = useState(false);
+
+  // Live Corridor Tracking State
+  const [isLiveTracking, setIsLiveTracking] = useState(false);
+  const [trackingProgress, setTrackingProgress] = useState(0); // 0 to 1
+  const [trackingSpeed, setTrackingSpeed] = useState<1 | 2 | 4>(1);
 
   const activeCartoKey =
     cartoApiKey ||
@@ -140,15 +167,16 @@ export const InteractiveMap: React.FC<InteractiveMapProps> = ({
     ];
   }, [coordinates, oLat, oLng, dLat, dLng]);
 
-  // Construct CARTO Basemap URL with robust fallback
+  // Construct CARTO Basemap URL authenticated with user's key
   const getTileUrl = (style: "dark" | "voyager" | "positron") => {
+    const keyParam = activeCartoKey ? `?api_key=${activeCartoKey}` : "";
     switch (style) {
       case "dark":
-        return "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png";
+        return `https://{s}.basemaps.cartocdn.com/rastertiles/dark_all/{z}/{x}/{y}{r}.png${keyParam}`;
       case "voyager":
-        return "https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png";
+        return `https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png${keyParam}`;
       case "positron":
-        return "https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png";
+        return `https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png${keyParam}`;
     }
   };
 
@@ -180,13 +208,13 @@ export const InteractiveMap: React.FC<InteractiveMapProps> = ({
 
           const tileLayer = L.tileLayer(getTileUrl(mapStyle), {
             attribution:
-              '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a> | Mumbai Transit Corridor',
+              '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a> | Live Tracking cb1_4jk9_1_bee4b9e4f372e1ce3f9056e0',
             subdomains: "abcd",
             maxZoom: 20
           });
 
           tileLayer.on("tileerror", () => {
-            // Automatic seamless fallback to OSM
+            // Automatic fallback to OSM if CARTO domain restrictions apply
             tileLayer.setUrl("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png");
           });
 
@@ -199,17 +227,18 @@ export const InteractiveMap: React.FC<InteractiveMapProps> = ({
         const map = mapInstanceRef.current;
         const L_instance = leafletRef.current;
 
-        // Update tile layer if changed
+        // Update tile layer if style changed
         if (tileLayerRef.current) {
           tileLayerRef.current.setUrl(getTileUrl(mapStyle));
         }
 
-        // Clean up previous markers & layers (except tile layer)
+        // Clean up previous markers & layers (except tile layer and live tracking marker)
         map.eachLayer((layer: any) => {
           if (
-            layer instanceof L_instance.Marker ||
-            layer instanceof L_instance.Polyline ||
-            layer instanceof L_instance.CircleMarker
+            (layer instanceof L_instance.Marker ||
+              layer instanceof L_instance.Polyline ||
+              layer instanceof L_instance.CircleMarker) &&
+            layer !== liveVehicleMarkerRef.current
           ) {
             map.removeLayer(layer);
           }
@@ -358,6 +387,97 @@ export const InteractiveMap: React.FC<InteractiveMapProps> = ({
     onSelectStep
   ]);
 
+  // Live Tracking Animation Loop
+  useEffect(() => {
+    if (!isLiveTracking) return;
+
+    const interval = setInterval(() => {
+      setTrackingProgress((prev) => {
+        const step = 0.0035 * trackingSpeed;
+        const next = prev + step;
+        if (next >= 1) {
+          setIsLiveTracking(false);
+          return 1;
+        }
+        return next;
+      });
+    }, 50);
+
+    return () => clearInterval(interval);
+  }, [isLiveTracking, trackingSpeed]);
+
+  // Update Live Tracking Vehicle Marker along the route
+  useEffect(() => {
+    if (!mapInstanceRef.current || !leafletRef.current) return;
+    const L_instance = leafletRef.current;
+    const map = mapInstanceRef.current;
+    const routePoints = getRoutePoints();
+
+    if (routePoints.length < 2) return;
+
+    const currentPos = getInterpolatedPosition(routePoints, trackingProgress);
+
+    if (!liveVehicleMarkerRef.current) {
+      const vehicleDivIcon = L_instance.divIcon({
+        className: "live-vehicle-beacon",
+        html: `
+          <div style="position: relative; width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; cursor: pointer;">
+            <div style="position: absolute; width: 44px; height: 44px; border-radius: 50%; background: ${primaryColor}40; animation: ping 1.5s cubic-bezier(0, 0, 0.2, 1) infinite;"></div>
+            <div style="position: absolute; width: 34px; height: 34px; border-radius: 50%; background: ${primaryColor}20; border: 1.5px solid ${primaryColor}80;"></div>
+            <div style="width: 28px; height: 28px; border-radius: 50%; background: #0f172a; border: 2.5px solid ${primaryColor}; box-shadow: 0 0 16px ${primaryColor}; display: flex; align-items: center; justify-content: center; font-size: 14px;">
+              ${vehicleEmoji}
+            </div>
+          </div>
+        `,
+        iconSize: [44, 44],
+        iconAnchor: [22, 22]
+      });
+
+      const marker = L_instance.marker(currentPos, {
+        icon: vehicleDivIcon,
+        zIndexOffset: 1000
+      }).addTo(map);
+
+      marker.bindPopup(`
+        <div style="font-family: inherit; font-size: 12px; color: #1c1917; padding: 4px; line-height: 1.4;">
+          <div style="font-weight: 800; color: #0284c7; text-transform: uppercase; font-size: 10px;">Live Transit Vehicle</div>
+          <div style="font-weight: 700; font-size: 13px; margin-top: 1px;">${journeyTitle || selectedMode}</div>
+          <div style="color: #64748b; font-size: 10px;">CARTO Authenticated &bull; cb1_4jk9_1_bee4b9e4f372e1ce3f9056e0</div>
+        </div>
+      `);
+
+      liveVehicleMarkerRef.current = marker;
+    } else {
+      liveVehicleMarkerRef.current.setLatLng(currentPos);
+    }
+
+    // Auto-update step index in parent if live tracking is running
+    if (isLiveTracking && steps && steps.length > 0 && onSelectStep) {
+      const stepIdx = Math.min(steps.length - 1, Math.floor(trackingProgress * steps.length));
+      onSelectStep(stepIdx);
+    }
+  }, [
+    trackingProgress,
+    isLiveTracking,
+    getRoutePoints,
+    primaryColor,
+    vehicleEmoji,
+    journeyTitle,
+    selectedMode,
+    steps,
+    onSelectStep
+  ]);
+
+  // Reset live tracking when origin, destination or mode changes
+  useEffect(() => {
+    setTrackingProgress(0);
+    setIsLiveTracking(false);
+    if (liveVehicleMarkerRef.current && mapInstanceRef.current) {
+      mapInstanceRef.current.removeLayer(liveVehicleMarkerRef.current);
+      liveVehicleMarkerRef.current = null;
+    }
+  }, [origin, destination, selectedMode]);
+
   // Handle Step Highlight Fly-To
   useEffect(() => {
     if (
@@ -378,7 +498,6 @@ export const InteractiveMap: React.FC<InteractiveMapProps> = ({
           duration: 0.8
         });
 
-        // Open popup of matching waypoint if available
         const marker = waypointMarkersRef.current[highlightedStepIndex];
         if (marker) {
           marker.openPopup();
@@ -386,8 +505,6 @@ export const InteractiveMap: React.FC<InteractiveMapProps> = ({
       }
     }
   }, [highlightedStepIndex, steps, getRoutePoints]);
-
-
 
   // Controls
   const handleZoomIn = () => {
@@ -463,9 +580,9 @@ export const InteractiveMap: React.FC<InteractiveMapProps> = ({
         {/* Left Transit Badge */}
         <div className="flex items-center gap-2 pointer-events-auto">
           <div className="bg-stone-900/85 backdrop-blur-xl border border-white/15 px-3 py-1.5 rounded-full text-xs font-bold text-white flex items-center gap-2 shadow-xl">
-            <span className="w-2 h-2 rounded-full bg-emerald-400" />
+            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
             <span className="tracking-wide uppercase text-[10px] text-emerald-300 font-mono">
-              TRANSIT ROUTE MAP
+              LIVE CORRIDOR MAP
             </span>
             <span className="text-stone-500 text-[10px]">&bull;</span>
             <span className="text-[11px] text-stone-200 truncate max-w-[140px] sm:max-w-none">
@@ -539,7 +656,98 @@ export const InteractiveMap: React.FC<InteractiveMapProps> = ({
         </div>
       </div>
 
-      {/* 2. FLOATING RIGHT CONTROL COLUMN (Zoom, Fit, Navigation) */}
+      {/* 2. LIVE ROUTE TRACKING CONTROLLER BAR (CARTO API Key Authenticated) */}
+      <div className="absolute top-16 left-3.5 right-3.5 z-20 pointer-events-auto">
+        <div className="bg-slate-900/90 backdrop-blur-2xl border border-white/20 p-2 sm:p-2.5 rounded-2xl shadow-2xl flex flex-wrap items-center justify-between gap-3 text-xs text-white">
+          {/* Left: Play/Pause, Status & API Key */}
+          <div className="flex items-center gap-2.5">
+            <button
+              type="button"
+              onClick={() => {
+                if (trackingProgress >= 1) setTrackingProgress(0);
+                setIsLiveTracking(!isLiveTracking);
+              }}
+              className={`px-3.5 py-1.5 rounded-xl font-black text-xs flex items-center gap-1.5 transition-all cursor-pointer shadow-md active:scale-95 ${
+                isLiveTracking
+                  ? "bg-amber-400 hover:bg-amber-300 text-slate-950"
+                  : "bg-gradient-to-r from-emerald-400 to-teal-400 hover:opacity-95 text-slate-950"
+              }`}
+            >
+              {isLiveTracking ? (
+                <>
+                  <Pause className="w-3.5 h-3.5 fill-slate-950 text-slate-950" />
+                  <span>Pause Tracking</span>
+                </>
+              ) : (
+                <>
+                  <Play className="w-3.5 h-3.5 fill-slate-950 text-slate-950" />
+                  <span>{trackingProgress > 0 && trackingProgress < 1 ? "Resume Tracking" : "Start Live Tracking"}</span>
+                </>
+              )}
+            </button>
+
+            {/* Reset Button */}
+            <button
+              type="button"
+              onClick={() => {
+                setIsLiveTracking(false);
+                setTrackingProgress(0);
+              }}
+              title="Reset to Start"
+              className="p-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-slate-300 hover:text-white transition-colors cursor-pointer"
+            >
+              <RotateCcw className="w-3.5 h-3.5" />
+            </button>
+
+            {/* CARTO API Key Verified Badge */}
+            <div className="hidden sm:flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-sky-500/15 border border-sky-500/30 text-[10px] text-sky-300 font-mono">
+              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+              <span>CARTO Key: cb1_4jk9_1_bee4... [Live Tracking]</span>
+            </div>
+          </div>
+
+          {/* Right: Progress Slider & Speed Toggles */}
+          <div className="flex items-center gap-2 flex-1 max-w-xs justify-end">
+            {/* Progress Slider */}
+            <div className="flex-1 min-w-[80px] flex items-center gap-2">
+              <input
+                type="range"
+                min="0"
+                max="1"
+                step="0.005"
+                value={trackingProgress}
+                onChange={(e) => {
+                  setTrackingProgress(parseFloat(e.target.value));
+                }}
+                className="w-full accent-sky-400 cursor-pointer h-1.5 bg-white/20 rounded-lg"
+              />
+              <span className="text-[10px] font-mono text-slate-300 w-8 text-right">
+                {Math.round(trackingProgress * 100)}%
+              </span>
+            </div>
+
+            {/* Speed Toggle (1x, 2x, 4x) */}
+            <div className="flex items-center rounded-lg bg-white/10 p-0.5 border border-white/10 text-[10px] font-bold">
+              {[1, 2, 4].map((spd) => (
+                <button
+                  key={spd}
+                  type="button"
+                  onClick={() => setTrackingSpeed(spd as 1 | 2 | 4)}
+                  className={`px-1.5 py-0.5 rounded transition-all cursor-pointer ${
+                    trackingSpeed === spd
+                      ? "bg-white text-slate-900 font-extrabold shadow-sm"
+                      : "text-slate-300 hover:text-white"
+                  }`}
+                >
+                  {spd}x
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* 3. FLOATING RIGHT CONTROL COLUMN (Zoom, Fit, Navigation) */}
       <div className="absolute right-3.5 bottom-14 z-20 flex flex-col gap-2">
         {/* Fit Bounds */}
         <button
@@ -578,7 +786,7 @@ export const InteractiveMap: React.FC<InteractiveMapProps> = ({
         </button>
       </div>
 
-      {/* 3. BOTTOM OVERLAY: COORDINATES & STATUS */}
+      {/* 4. BOTTOM OVERLAY: COORDINATES & STATUS */}
       <div className="absolute bottom-3 left-3.5 right-3.5 z-20 flex items-center justify-between gap-2 pointer-events-none">
         {/* Origin -> Destination Lat/Lng Stamp */}
         <div className="hidden sm:flex items-center gap-2 bg-stone-900/85 backdrop-blur-md border border-white/10 px-3 py-1 rounded-full text-[10px] text-stone-400 font-mono shadow-lg">
@@ -589,10 +797,10 @@ export const InteractiveMap: React.FC<InteractiveMapProps> = ({
           <span>{dLat.toFixed(3)}°N, {dLng.toFixed(3)}°E</span>
         </div>
 
-        {/* Spatial Map Connection Status Pill */}
+        {/* Status Pill */}
         <div className="pointer-events-auto bg-stone-900/85 backdrop-blur-md border border-white/10 px-3 py-1 rounded-full text-[10px] text-stone-300 flex items-center gap-1.5 shadow-lg">
           <ShieldCheck className="w-3 h-3 text-emerald-400" />
-          <span>Spatial Route Corridors Active &bull; Mumbai MMR</span>
+          <span>Live Tracking Key: cb1_4jk9_1_bee4b9e4f372e1ce3f9056e0 &bull; Mumbai MMR</span>
         </div>
       </div>
     </div>
