@@ -589,10 +589,10 @@ export const InteractiveMap: React.FC<InteractiveMapProps> = ({
           <span>{dLat.toFixed(3)}°N, {dLng.toFixed(3)}°E</span>
         </div>
 
-        {/* Live Map Connection Status Pill */}
+        {/* Spatial Map Connection Status Pill */}
         <div className="pointer-events-auto bg-stone-900/85 backdrop-blur-md border border-white/10 px-3 py-1 rounded-full text-[10px] text-stone-300 flex items-center gap-1.5 shadow-lg">
           <ShieldCheck className="w-3 h-3 text-emerald-400" />
-          <span>Transit Route Corridors Active &bull; Mumbai MMR</span>
+          <span>Spatial Route Corridors Active &bull; Mumbai MMR</span>
         </div>
       </div>
     </div>

@@ -1111,8 +1111,10 @@ export default function HomePage() {
       <div id="journey-analysis" className="w-full">
         <JourneyFiveParameterAnalysis
           selectedOption={selectedOption}
+          allOptions={routeOptions}
           origin={sourceLoc}
           destination={destLoc}
+          onSelectOption={(opt) => setSelectedOption(opt)}
           onExploreOnMap={() => {
             document.getElementById("spatial-map")?.scrollIntoView({ behavior: "smooth" });
           }}
