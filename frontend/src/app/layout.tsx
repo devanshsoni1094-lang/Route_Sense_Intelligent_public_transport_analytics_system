@@ -6,6 +6,7 @@ import {
   Home,
   Compass,
   MapPin,
+  Navigation,
   Ticket,
   BarChart2,
   Settings,
@@ -65,13 +66,13 @@ export default function RootLayout({
               <BarChart2 className="w-4 h-4" />
             </a>
 
-            {/* Spatial Route Map */}
+            {/* Corridor Waypoints */}
             <a
-              href="#spatial-map"
-              title="Spatial Corridor Map"
+              href="#corridor-itinerary"
+              title="Corridor Waypoints &amp; Itinerary"
               className="w-9 h-9 rounded-full hover:bg-white/10 text-slate-400 hover:text-white flex items-center justify-center transition-all cursor-pointer"
             >
-              <MapPin className="w-4 h-4" />
+              <Navigation className="w-4 h-4" />
             </a>
           </aside>
 

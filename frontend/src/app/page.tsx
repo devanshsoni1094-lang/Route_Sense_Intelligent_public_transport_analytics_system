@@ -36,7 +36,6 @@ import {
 import { MultiModalOption, ResolvedLocation, RouteStep } from "@/types";
 import { fetchApi } from "@/lib/api";
 import { LocationAutocomplete } from "@/components/common/LocationAutocomplete";
-import { InteractiveMap } from "@/components/common/InteractiveMap";
 import { JourneyFiveParameterAnalysis } from "@/components/analytics/JourneyFiveParameterAnalysis";
 import { TravelHeroSpotlight } from "@/components/home/TravelHeroSpotlight";
 
@@ -1115,199 +1114,176 @@ export default function HomePage() {
           origin={sourceLoc}
           destination={destLoc}
           onSelectOption={(opt) => setSelectedOption(opt)}
-          onExploreOnMap={() => {
-            document.getElementById("spatial-map")?.scrollIntoView({ behavior: "smooth" });
-          }}
         />
       </div>
 
-      {/* 6. SPATIAL MAP & SELECTED JOURNEY ITINERARY ROW */}
-      <div id="spatial-map" className="grid grid-cols-1 lg:grid-cols-12 gap-5 mt-2">
-        
-        {/* Left Itinerary Breakdown */}
-        <div className="lg:col-span-5 rounded-[28px] vision-card p-5 flex flex-col justify-between shadow-xl">
+      {/* 6. ACTIVE CORRIDOR ITINERARY & TURN-BY-TURN WAYPOINTS */}
+      <div id="corridor-itinerary" className="w-full rounded-[28px] vision-card p-5 sm:p-7 shadow-xl border border-white/10 mt-2 text-white">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-4 pb-3 border-b border-white/10">
           <div>
-            <div className="flex items-center justify-between mb-3">
-              <div>
-                <span className="text-[10px] font-bold text-sky-400 uppercase tracking-wider">
-                  Active Mumbai Corridor
-                </span>
-                <h4 className="text-sm font-black text-white">
-                  {selectedOption?.title || "Selected Mumbai Route"}
-                </h4>
-              </div>
-
-              <div className="text-right">
-                <span className="text-lg font-black text-white">
-                  ₹{selectedOption?.quoted_price_inr ?? selectedOption?.fare_inr ?? 0}
-                </span>
-              </div>
+            <div className="flex items-center gap-2 mb-1">
+              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+              <span className="text-[10px] font-bold text-sky-400 uppercase tracking-wider font-mono">
+                Active Mumbai Corridor Waypoints
+              </span>
             </div>
-
-            {/* Comprehensive Journey Comparison Metrics Grid */}
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 p-3 rounded-2xl bg-white/5 border border-white/10 mb-4 text-xs">
-              {/* Travel Time */}
-              <div className="flex flex-col gap-0.5 p-2 rounded-xl bg-black/20 border border-white/5">
-                <span className="text-[10px] text-stone-400 flex items-center gap-1">
-                  <Clock className="w-3 h-3 text-amber-400" />
-                  <span>Travel Time</span>
-                </span>
-                <span className="text-sm font-black text-white">
-                  {selectedOption?.total_duration_minutes ?? selectedOption?.duration_min ?? 0} mins
-                </span>
-                {selectedOption?.neural_duration_min && (
-                  <span className="text-[9px] text-indigo-300 font-mono flex items-center gap-0.5">
-                    <Brain className="w-2.5 h-2.5 text-indigo-400" />
-                    <span>Neural: ~{selectedOption.neural_duration_min}m</span>
-                  </span>
-                )}
-              </div>
-
-              {/* Distance */}
-              <div className="flex flex-col gap-0.5 p-2 rounded-xl bg-black/20 border border-white/5">
-                <span className="text-[10px] text-stone-400 flex items-center gap-1">
-                  <Navigation className="w-3 h-3 text-rose-400" />
-                  <span>Distance</span>
-                </span>
-                <span className="text-sm font-black text-white">
-                  {selectedOption?.route_distance_km ?? selectedOption?.distance_km ?? 0} km
-                </span>
-                <span className="text-[9px] text-stone-400">
-                  Haversine / Road route
-                </span>
-              </div>
-
-              {/* Verified Fare */}
-              <div className="flex flex-col gap-0.5 p-2 rounded-xl bg-black/20 border border-white/5">
-                <span className="text-[10px] text-stone-400 flex items-center gap-1">
-                  <Coins className="w-3 h-3 text-emerald-400" />
-                  <span>Verified Fare</span>
-                </span>
-                <span className="text-sm font-black text-emerald-300">
-                  ₹{selectedOption?.quoted_price_inr ?? selectedOption?.fare_inr ?? 0}
-                </span>
-                <span className="text-[9px] text-stone-400 truncate">
-                  {selectedOption?.price_type || "Regulated Tariff"}
-                </span>
-              </div>
-
-              {/* Transfers */}
-              <div className="flex flex-col gap-0.5 p-2 rounded-xl bg-black/20 border border-white/5">
-                <span className="text-[10px] text-stone-400 flex items-center gap-1">
-                  <ArrowUpDown className="w-3 h-3 text-cyan-400" />
-                  <span>Transfers</span>
-                </span>
-                <span className="text-sm font-black text-white">
-                  {selectedOption?.transfers && selectedOption.transfers > 0
-                    ? `${selectedOption.transfers} Interchange${selectedOption.transfers > 1 ? "s" : ""}`
-                    : "Direct (0)"}
-                </span>
-                <span className="text-[9px] text-stone-400">
-                  {selectedOption?.steps ? `${selectedOption.steps.length} segments` : "Point to point"}
-                </span>
-              </div>
-
-              {/* Live Traffic */}
-              <div className="flex flex-col gap-0.5 p-2 rounded-xl bg-black/20 border border-white/5">
-                <span className="text-[10px] text-stone-400 flex items-center gap-1">
-                  <Activity className="w-3 h-3 text-orange-400" />
-                  <span>Live Traffic</span>
-                </span>
-                <span className="text-xs font-bold text-amber-300 truncate">
-                  {selectedOption?.traffic_status || "Flowing Normally"}
-                </span>
-                <span className="text-[9px] text-stone-400">
-                  Delay: +{selectedOption?.estimated_delay_min ?? 0} min
-                </span>
-              </div>
-
-              {/* Comfort & Green Score */}
-              <div className="flex flex-col gap-0.5 p-2 rounded-xl bg-black/20 border border-white/5">
-                <span className="text-[10px] text-stone-400 flex items-center gap-1">
-                  <Armchair className="w-3 h-3 text-purple-400" />
-                  <span>Comfort Score</span>
-                </span>
-                <span className="text-sm font-black text-purple-300">
-                  {selectedOption?.comfort_score ?? 60}/100
-                </span>
-                <span className="text-[9px] text-emerald-400 font-semibold flex items-center gap-1">
-                  <Leaf className="w-2.5 h-2.5" />
-                  <span>{selectedOption?.co2_emissions_g ?? 50}g CO₂</span>
-                </span>
-              </div>
-            </div>
-
-            {/* Steps */}
-            {selectedOption?.steps && selectedOption.steps.length > 0 && (
-              <>
-                <div className="mb-2 flex items-center justify-between text-[11px] text-slate-300">
-                  <span className="font-semibold text-white">Turn-by-Turn Waypoints:</span>
-                  <span className="text-[10px] text-sky-300 bg-sky-500/10 px-2 py-0.5 rounded-full border border-sky-500/20 font-medium">
-                    Tap step to focus route map
-                  </span>
-                </div>
-                <div className="space-y-2 max-h-64 overflow-y-auto pr-1">
-                  {selectedOption.steps.map((st, i) => (
-                    <div
-                      key={i}
-                      onClick={() => setHighlightedStepIndex(i)}
-                      className={`p-2.5 rounded-2xl border transition-all cursor-pointer flex items-start gap-2.5 ${
-                        highlightedStepIndex === i
-                          ? "bg-sky-950/60 border-sky-400/80 text-white shadow-md ring-1 ring-sky-500/40"
-                          : "bg-white/5 border-white/10 hover:bg-white/10 text-slate-300"
-                      }`}
-                    >
-                      <div className="w-5 h-5 rounded-full bg-sky-500/20 text-sky-300 border border-sky-500/40 flex items-center justify-center text-[10px] font-bold shrink-0">
-                        {st.step_number}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-xs font-semibold">{st.instruction}</p>
-                        <p className="text-[10px] text-slate-400 mt-0.5">
-                          {st.mode} &bull; {st.duration_min} mins {st.distance_km > 0 && `&bull; ${st.distance_km} km`}
-                        </p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </>
-            )}
-            {/* Book Online Ticket Button */}
-            {selectedOption && (
-              <button
-                type="button"
-                onClick={() => {
-                  document.getElementById("journey-analysis")?.scrollIntoView({ behavior: "smooth" });
-                }}
-                className="w-full mt-4 py-3 rounded-full bg-gradient-to-r from-sky-400 via-teal-400 to-emerald-400 hover:opacity-95 text-slate-950 font-black text-xs tracking-wider uppercase shadow-xl hover:scale-[1.02] active:scale-95 transition-all flex items-center justify-center gap-2 cursor-pointer"
-              >
-                <BarChart2 className="w-4 h-4 text-slate-950" />
-                <span>View 5-Parameter Analysis</span>
-              </button>
-            )}
+            <h4 className="text-base sm:text-lg font-black text-white">
+              {selectedOption?.title || "Selected Mumbai Route"}
+            </h4>
           </div>
 
-          {/* Provenance note */}
-          <div className="mt-4 pt-3 border-t border-white/10 text-[10px] text-stone-400">
-            Source: {selectedOption?.source_name || "MMR Official Tariff & Google Routes Engine"}
+          <div className="text-right flex items-baseline gap-2">
+            <span className="text-xs text-stone-400">Total Fare:</span>
+            <span className="text-2xl font-black text-emerald-400">
+              ₹{selectedOption?.quoted_price_inr ?? selectedOption?.fare_inr ?? 0}
+            </span>
           </div>
         </div>
 
-        {/* Right Spatial Map Canvas */}
-        <div className="lg:col-span-7 h-[500px] lg:h-auto min-h-[500px] xl:min-h-[560px] rounded-[28px] overflow-hidden shadow-2xl">
-          <InteractiveMap
-            origin={sourceLoc}
-            destination={destLoc}
-            selectedMode={selectedOption?.transport_mode || selectedOption?.mode || "BUS"}
-            journeyTitle={selectedOption?.title}
-            distanceKm={selectedOption?.route_distance_km ?? selectedOption?.distance_km}
-            durationMin={selectedOption?.total_duration_minutes ?? selectedOption?.duration_min}
-            coordinates={selectedOption?.coordinates}
-            polyline={selectedOption?.polyline}
-            steps={selectedOption?.steps}
-            highlightedStepIndex={highlightedStepIndex}
-            onSelectStep={setHighlightedStepIndex}
-            cartoApiKey="cb1_4jk9_1_bee4b9e4f372e1ce3f9056e0"
-          />
+        {/* Comprehensive Journey Comparison Metrics Grid */}
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 p-3.5 rounded-2xl bg-white/5 border border-white/10 mb-5 text-xs">
+          {/* Travel Time */}
+          <div className="flex flex-col gap-0.5 p-2.5 rounded-xl bg-black/20 border border-white/5">
+            <span className="text-[10px] text-stone-400 flex items-center gap-1">
+              <Clock className="w-3 h-3 text-amber-400" />
+              <span>Travel Time</span>
+            </span>
+            <span className="text-sm font-black text-white">
+              {selectedOption?.total_duration_minutes ?? selectedOption?.duration_min ?? 0} mins
+            </span>
+            {selectedOption?.neural_duration_min && (
+              <span className="text-[9px] text-indigo-300 font-mono flex items-center gap-0.5">
+                <Brain className="w-2.5 h-2.5 text-indigo-400" />
+                <span>Neural: ~{selectedOption.neural_duration_min}m</span>
+              </span>
+            )}
+          </div>
+
+          {/* Distance */}
+          <div className="flex flex-col gap-0.5 p-2.5 rounded-xl bg-black/20 border border-white/5">
+            <span className="text-[10px] text-stone-400 flex items-center gap-1">
+              <Navigation className="w-3 h-3 text-rose-400" />
+              <span>Distance</span>
+            </span>
+            <span className="text-sm font-black text-white">
+              {selectedOption?.route_distance_km ?? selectedOption?.distance_km ?? 0} km
+            </span>
+            <span className="text-[9px] text-stone-400">
+              Corridor route
+            </span>
+          </div>
+
+          {/* Verified Fare */}
+          <div className="flex flex-col gap-0.5 p-2.5 rounded-xl bg-black/20 border border-white/5">
+            <span className="text-[10px] text-stone-400 flex items-center gap-1">
+              <Coins className="w-3 h-3 text-emerald-400" />
+              <span>Verified Fare</span>
+            </span>
+            <span className="text-sm font-black text-emerald-300">
+              ₹{selectedOption?.quoted_price_inr ?? selectedOption?.fare_inr ?? 0}
+            </span>
+            <span className="text-[9px] text-stone-400 truncate">
+              {selectedOption?.price_type || "Regulated Tariff"}
+            </span>
+          </div>
+
+          {/* Transfers */}
+          <div className="flex flex-col gap-0.5 p-2.5 rounded-xl bg-black/20 border border-white/5">
+            <span className="text-[10px] text-stone-400 flex items-center gap-1">
+              <ArrowUpDown className="w-3 h-3 text-cyan-400" />
+              <span>Transfers</span>
+            </span>
+            <span className="text-sm font-black text-white">
+              {selectedOption?.transfers && selectedOption.transfers > 0
+                ? `${selectedOption.transfers} Interchange${selectedOption.transfers > 1 ? "s" : ""}`
+                : "Direct (0)"}
+            </span>
+            <span className="text-[9px] text-stone-400">
+              {selectedOption?.steps ? `${selectedOption.steps.length} segments` : "Point to point"}
+            </span>
+          </div>
+
+          {/* Traffic Buffer */}
+          <div className="flex flex-col gap-0.5 p-2.5 rounded-xl bg-black/20 border border-white/5">
+            <span className="text-[10px] text-stone-400 flex items-center gap-1">
+              <Activity className="w-3 h-3 text-orange-400" />
+              <span>Traffic Buffer</span>
+            </span>
+            <span className="text-xs font-bold text-amber-300 truncate">
+              {selectedOption?.traffic_status || "Flowing Normally"}
+            </span>
+            <span className="text-[9px] text-stone-400">
+              Delay: +{selectedOption?.estimated_delay_min ?? 0} min
+            </span>
+          </div>
+
+          {/* Comfort Score */}
+          <div className="flex flex-col gap-0.5 p-2.5 rounded-xl bg-black/20 border border-white/5">
+            <span className="text-[10px] text-stone-400 flex items-center gap-1">
+              <Armchair className="w-3 h-3 text-purple-400" />
+              <span>Comfort Score</span>
+            </span>
+            <span className="text-sm font-black text-purple-300">
+              {selectedOption?.comfort_score ?? 60}/100
+            </span>
+            <span className="text-[9px] text-emerald-400 font-semibold flex items-center gap-1">
+              <Leaf className="w-2.5 h-2.5" />
+              <span>{selectedOption?.co2_emissions_g ?? 50}g CO₂</span>
+            </span>
+          </div>
+        </div>
+
+        {/* Turn-by-Turn Waypoints Grid */}
+        {selectedOption?.steps && selectedOption.steps.length > 0 && (
+          <div className="space-y-3">
+            <div className="flex items-center justify-between text-xs text-slate-300 pb-1 border-b border-white/10">
+              <span className="font-bold text-white flex items-center gap-2">
+                <Navigation className="w-3.5 h-3.5 text-sky-400" />
+                <span>Turn-by-Turn Waypoints &amp; Station Steps:</span>
+              </span>
+              <span className="text-[10px] text-sky-300 bg-sky-500/10 px-2.5 py-0.5 rounded-full border border-sky-500/20 font-mono">
+                {selectedOption.steps.length} Route Segments
+              </span>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2.5 max-h-96 overflow-y-auto pr-1">
+              {selectedOption.steps.map((st, i) => (
+                <div
+                  key={i}
+                  onClick={() => setHighlightedStepIndex(i)}
+                  className={`p-3 rounded-2xl border transition-all cursor-pointer flex items-start gap-3 ${
+                    highlightedStepIndex === i
+                      ? "bg-sky-950/70 border-sky-400 text-white shadow-lg ring-1 ring-sky-400/50 scale-[1.01]"
+                      : "bg-white/5 border-white/10 hover:bg-white/10 text-slate-300"
+                  }`}
+                >
+                  <div className="w-6 h-6 rounded-full bg-sky-500/20 text-sky-300 border border-sky-500/40 flex items-center justify-center text-[10px] font-black shrink-0">
+                    {st.step_number}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs font-bold text-white leading-snug">{st.instruction}</p>
+                    <p className="text-[10px] text-slate-400 mt-1 flex items-center gap-1.5 flex-wrap">
+                      <span className="px-1.5 py-0.2 rounded bg-white/10 font-mono text-[9px] text-sky-300">{st.mode}</span>
+                      <span>&bull;</span>
+                      <span>{st.duration_min} mins</span>
+                      {st.distance_km > 0 && (
+                        <>
+                          <span>&bull;</span>
+                          <span>{st.distance_km} km</span>
+                        </>
+                      )}
+                    </p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Provenance note */}
+        <div className="mt-4 pt-3 border-t border-white/10 flex flex-col sm:flex-row items-center justify-between text-[10px] text-stone-400 gap-2">
+          <span>Source: {selectedOption?.source_name || "MMR Official Tariff & Google Routes Engine"}</span>
+          <span>Mumbai Metropolitan Region Authority (MMRDA) &amp; Railway Operations</span>
         </div>
       </div>
 

@@ -112,15 +112,15 @@ export const Header: React.FC = () => {
         </a>
       </div>
 
-      {/* Right Actions: Status, Spatial Map & User Profile */}
+      {/* Right Actions: Status, Corridor Itinerary & User Profile */}
       <div className="flex items-center gap-3">
-        {/* Quick Link to Spatial Route Map */}
+        {/* Quick Link to Corridor Itinerary */}
         <a
-          href="#spatial-map"
+          href="#corridor-itinerary"
           className="px-4 py-2 rounded-full bg-white hover:bg-slate-100 text-slate-900 font-extrabold text-xs flex items-center gap-1.5 shadow-lg shadow-black/40 hover:scale-105 active:scale-95 transition-all cursor-pointer"
         >
           <Compass className="w-3.5 h-3.5 text-sky-600" />
-          <span>Spatial Map</span>
+          <span>Itinerary</span>
         </a>
 
         {/* Transit Connectivity Pill */}
@@ -205,12 +205,12 @@ export const Header: React.FC = () => {
                   </a>
 
                   <a
-                    href="#spatial-map"
+                    href="#corridor-itinerary"
                     onClick={() => setDropdownOpen(false)}
                     className="flex items-center gap-2 px-2.5 py-2 rounded-xl text-slate-200 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
                   >
                     <Compass className="w-3.5 h-3.5 text-emerald-400" />
-                    <span>Spatial Corridor Map</span>
+                    <span>Corridor Waypoints</span>
                   </a>
                 </div>
 

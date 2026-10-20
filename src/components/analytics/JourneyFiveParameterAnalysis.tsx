@@ -38,7 +38,6 @@ interface JourneyFiveParameterAnalysisProps {
   origin: ResolvedLocation | null;
   destination: ResolvedLocation | null;
   onSelectOption?: (option: MultiModalOption) => void;
-  onExploreOnMap?: () => void;
 }
 
 type AnalysisTab = "ALL" | "TIME" | "FARE" | "EFFICIENCY" | "MODES" | "COMFORT";
@@ -71,8 +70,7 @@ export const JourneyFiveParameterAnalysis: React.FC<JourneyFiveParameterAnalysis
   allOptions = [],
   origin,
   destination,
-  onSelectOption,
-  onExploreOnMap
+  onSelectOption
 }) => {
   const [activeTab, setActiveTab] = useState<AnalysisTab>("ALL");
 
@@ -302,18 +300,6 @@ export const JourneyFiveParameterAnalysis: React.FC<JourneyFiveParameterAnalysis
             <strong>Route Efficiency</strong>, <strong>Transport Modes</strong>, and <strong>Comfort &amp; Convenience</strong>.
           </p>
         </div>
-
-        {/* Action Button: Jump to Spatial Map */}
-        {onExploreOnMap && (
-          <button
-            type="button"
-            onClick={onExploreOnMap}
-            className="px-5 py-2.5 rounded-full bg-white hover:bg-slate-100 text-slate-900 font-extrabold text-xs flex items-center gap-2 shadow-xl hover:scale-105 active:scale-95 transition-all cursor-pointer shrink-0 self-start lg:self-center"
-          >
-            <Navigation className="w-3.5 h-3.5 text-slate-900" />
-            <span>Inspect Route on Spatial Map</span>
-          </button>
-        )}
       </div>
 
       {/* INTERACTIVE 5-PARAMETER NAVIGATION TABS */}
@@ -851,7 +837,7 @@ export const JourneyFiveParameterAnalysis: React.FC<JourneyFiveParameterAnalysis
                 <span>Transport Mode Analysis — Side-by-Side Comparison of All 5 Modes</span>
               </h4>
               <p className="text-xs text-slate-300 mt-0.5">
-                Compare Buses, Local Trains, Metro, Autos, and Cabs on this exact corridor. Click any mode to activate it on the spatial map!
+                Compare Buses, Local Trains, Metro, Autos, and Cabs on this exact corridor. Click any mode to activate it for complete corridor analysis!
               </p>
             </div>
             <span className="text-xs font-bold text-purple-300 bg-purple-500/20 px-3 py-1 rounded-full border border-purple-500/30">
