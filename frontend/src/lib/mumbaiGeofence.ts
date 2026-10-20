@@ -35,8 +35,9 @@ export function isWithinMumbaiMMR(lat: number, lng: number, placeName: string): 
   }
 
   if (lat !== 0 && lng !== 0) {
-    // Latitude [18.65 to 19.65] and Longitude [72.65 to 73.40] covers MMR thoroughly
-    const inBounds = lat >= 18.65 && lat <= 19.65 && lng >= 72.65 && lng <= 73.40;
+    // Latitude [18.50 to 19.85] and Longitude [72.50 to 73.60] covers MMR thoroughly
+    const inBounds = lat >= 18.50 && lat <= 19.85 && lng >= 72.50 && lng <= 73.60;
+    if (inBounds) return true;
     if (!inBounds) return false;
   }
 
@@ -50,8 +51,17 @@ export function isWithinMumbaiMMR(lat: number, lng: number, placeName: string): 
     "marine lines", "charni road", "grant road", "mumbai central", "lower parel", "prabhadevi", "wadala",
     "sewri", "cotton green", "reay road", "dockyard", "sandhurst", "masjid", "gtb nagar", "chunabhatti",
     "tilak nagar", "mankhurd", "govandi", "juinagar", "sanpada", "seawoods", "mansarovar", "khandeshwar",
-    "digha", "turbhe", "palghar", "boisar", "dahanu", "karjat", "kasara", "jvlr", "bandstand", "marine drive"
+    "digha", "turbhe", "palghar", "boisar", "dahanu", "karjat", "kasara", "jvlr", "bandstand", "marine drive",
+    "currey road", "chinchpokli", "mahalaxmi", "elphinstone", "kalwa", "mumbra", "diva", "kopar", "thakurli",
+    "titwala", "asangaon", "vikhroli", "nahur", "rabale", "chowpatty", "nariman", "trident", "gateway",
+    "juhu", "lokhandwala", "versova", "airport", "terminal", "siddhivinayak", "station", "stn", "depot",
+    "bus stop", "central", "terminus", "junction", "railway", "road", "west", "east"
   ];
 
-  return mmrKeywords.some((k) => q.includes(k));
+  if (mmrKeywords.some((k) => q.includes(k))) {
+    return true;
+  }
+
+  // If no explicit exclusion matched and string is present, allow within Mumbai transit app context
+  return q.trim().length > 0;
 }

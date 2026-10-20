@@ -322,25 +322,29 @@ const TOP_MUMBAI_OPERATORS = [
     name: "Central & Western Railway",
     subtitle: "Local Train II (₹5-₹30) & I (₹65-₹235)",
     icon: "🚆",
-    color: "from-rose-500 to-red-600"
+    color: "from-rose-500 to-red-600",
+    category: "LOCAL_TRAIN"
   },
   {
     name: "BEST Undertaking",
     subtitle: "Non-AC (₹10-₹60) & AC Electric (₹12-₹65)",
     icon: "🚌",
-    color: "from-amber-500 to-orange-600"
+    color: "from-amber-500 to-orange-600",
+    category: "BEST_BUS"
   },
   {
     name: "Mumbai RTO Taxi & Auto",
     subtitle: "Kaali-Peeli (₹33 + ₹21.90) | Auto (₹27 + ₹18.22)",
     icon: "🚖",
-    color: "from-yellow-500 to-amber-600"
+    color: "from-yellow-500 to-amber-600",
+    category: "TAXI_AUTO"
   },
   {
     name: "Mumbai Metro (MMOPL & MMRC)",
     subtitle: "Line 1, 2A, 7 & Line 3 Aqua Line (₹10-₹60)",
     icon: "🚇",
-    color: "from-purple-500 to-indigo-600"
+    color: "from-purple-500 to-indigo-600",
+    category: "METRO"
   },
   {
     name: "Uber & Ola Mumbai",
@@ -386,8 +390,7 @@ export default function HomePage() {
     "ALL" | "LOCAL_TRAIN" | "BEST_BUS" | "METRO" | "TAXI_AUTO" | "CABS" | "BIKES" | "PERSONAL"
   >("ALL");
 
-  // Secondary Settings (Mumbai Fuel Prices 2026)
-  const [showAdvancedSettings, setShowAdvancedSettings] = useState(false);
+  // Secondary Settings (Mumbai Commuters & Fuel Prices)
   const [passengers, setPassengers] = useState(1);
   const [fuelPrice, setFuelPrice] = useState(104.21); // Mumbai Petrol ₹104.21/L
   const [carEfficiency, setCarEfficiency] = useState(14.5);
@@ -650,9 +653,7 @@ export default function HomePage() {
             { id: "BEST_BUS", label: "BEST Bus (Non-AC/AC)", emoji: "🚌" },
             { id: "METRO", label: "Metro (Lines 1, 2A, 7, 3)", emoji: "🚇" },
             { id: "TAXI_AUTO", label: "Kaali-Peeli & Auto", emoji: "🚖" },
-            { id: "CABS", label: "Uber & Ola Cabs", emoji: "🚗" },
-            { id: "BIKES", label: "Rapido & Uber Bike", emoji: "🛵" },
-            { id: "PERSONAL", label: "Car & Bike (Sea Link)", emoji: "🔋" }
+            { id: "CABS", label: "Uber & Ola Cabs", emoji: "🚗" }
           ].map((cat) => {
             const isActive = activeCategory === cat.id;
             return (
@@ -708,7 +709,9 @@ export default function HomePage() {
             {TOP_MUMBAI_OPERATORS.slice(0, 4).map((op, idx) => (
               <div
                 key={idx}
-                className="flex items-center justify-between p-2 rounded-2xl hover:bg-white/10 transition-colors cursor-pointer group"
+                onClick={() => setActiveCategory(op.category as any)}
+                className="flex items-center justify-between p-2 rounded-2xl hover:bg-white/10 transition-colors cursor-pointer group active:scale-98"
+                title={`Filter by ${op.name}`}
               >
                 <div className="flex items-center gap-2.5">
                   <div className={`w-8 h-8 rounded-full bg-gradient-to-tr ${op.color} flex items-center justify-center text-sm shadow-md shrink-0 group-hover:scale-110 transition-transform`}>
@@ -729,7 +732,7 @@ export default function HomePage() {
       </div>
 
       {/* 3. MUMBAI SEARCH FORM: THE TWO REQUIRED INPUTS */}
-      <div id="search-corridor" className="w-full rounded-[28px] vision-card p-4 sm:p-5 shadow-2xl">
+      <div id="journey-planner" className="w-full rounded-[28px] vision-card p-4 sm:p-5 shadow-2xl">
         <form
           onSubmit={(e) => {
             e.preventDefault();
@@ -834,62 +837,27 @@ export default function HomePage() {
             ))}
           </div>
 
-          {/* Preferences Toggle */}
-          <button
-            type="button"
-            onClick={() => setShowAdvancedSettings(!showAdvancedSettings)}
-            className="text-stone-400 hover:text-stone-200 flex items-center gap-1 font-semibold transition-colors cursor-pointer"
-          >
-            <SlidersHorizontal className="w-3 h-3 text-rose-400" />
-            <span>{showAdvancedSettings ? "Hide Settings" : "Mumbai Fuel & Vehicle Settings"}</span>
-            {showAdvancedSettings ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
-          </button>
-        </div>
-
-        {/* Optional Vehicle & Fuel Settings Drawer */}
-        {showAdvancedSettings && (
-          <div className="mt-3 p-3.5 rounded-2xl bg-black/30 border border-white/10 grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs text-stone-300 animate-in fade-in slide-in-from-top-2 duration-300">
-            <div>
-              <span className="block text-stone-400 text-[11px] mb-1">Passengers:</span>
-              <div className="flex items-center gap-1.5">
-                {[1, 2, 4, 6].map((p) => (
-                  <button
-                    key={p}
-                    type="button"
-                    onClick={() => setPassengers(p)}
-                    className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                      passengers === p
-                        ? "bg-rose-500 text-white shadow-md"
-                        : "bg-white/10 text-stone-300 hover:bg-white/15"
-                    }`}
-                  >
-                    {p}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <div>
-              <span className="block text-stone-400 text-[11px] mb-1">Mumbai Petrol Price (₹/Litre):</span>
-              <input
-                type="number"
-                value={fuelPrice}
-                onChange={(e) => setFuelPrice(parseFloat(e.target.value) || 104.21)}
-                className="w-full bg-white/10 border border-white/10 rounded-lg px-2.5 py-1 text-xs text-white"
-              />
-            </div>
-
-            <div>
-              <span className="block text-stone-400 text-[11px] mb-1">Car Mileage in City Traffic (km/L):</span>
-              <input
-                type="number"
-                value={carEfficiency}
-                onChange={(e) => setCarEfficiency(parseFloat(e.target.value) || 14.5)}
-                className="w-full bg-white/10 border border-white/10 rounded-lg px-2.5 py-1 text-xs text-white"
-              />
+          {/* Quick Commuter Passengers Count */}
+          <div className="flex items-center gap-2 text-xs text-stone-300">
+            <span className="text-stone-400 text-[11px] font-semibold">Commuters:</span>
+            <div className="flex items-center gap-1">
+              {[1, 2, 4, 6].map((p) => (
+                <button
+                  key={p}
+                  type="button"
+                  onClick={() => setPassengers(p)}
+                  className={`px-2.5 py-0.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                    passengers === p
+                      ? "bg-rose-500 text-white shadow-md"
+                      : "bg-white/10 text-stone-300 hover:bg-white/15"
+                  }`}
+                >
+                  {p}
+                </button>
+              ))}
             </div>
           </div>
-        )}
+        </div>
       </div>
 
       {/* 3.5 DEDICATED MUMBAI TICKET BOOKING & ONLINE QR PAYMENT SECTION */}
@@ -1343,38 +1311,7 @@ export default function HomePage() {
         </div>
       </div>
 
-      {/* 6. BOTTOM FLOATING DOCK */}
-      <div className="w-full flex justify-center mt-4">
-        <div className="px-3 py-1.5 rounded-full bg-stone-900/85 backdrop-blur-2xl border border-white/15 shadow-2xl flex items-center gap-1.5 text-xs text-stone-300 flex-wrap justify-center">
-          {[
-            { id: "ALL", label: "All Mumbai Fares" },
-            { id: "LOCAL_TRAIN", label: "Local Train" },
-            { id: "BEST_BUS", label: "BEST Bus" },
-            { id: "METRO", label: "Metro" },
-            { id: "TAXI_AUTO", label: "Taxi & Auto" },
-            { id: "CABS", label: "Cabs" },
-            { id: "BIKES", label: "Bikes" },
-            { id: "PERSONAL", label: "Personal Car" }
-          ].map((dockItem) => {
-            const isActive = activeCategory === dockItem.id;
-            return (
-              <button
-                key={dockItem.id}
-                onClick={() => setActiveCategory(dockItem.id as any)}
-                className={`px-3 py-1 rounded-full text-xs font-semibold transition-all cursor-pointer ${
-                  isActive
-                    ? "bg-white/20 text-white shadow-sm font-bold"
-                    : "text-stone-400 hover:text-white"
-                }`}
-              >
-                {dockItem.label}
-              </button>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* 7. ONLINE BOOKING & E-TICKET MODAL */}
+      {/* 6. ONLINE BOOKING & E-TICKET MODAL */}
       <BookingModal
         isOpen={isBookingOpen}
         onClose={() => setIsBookingOpen(false)}

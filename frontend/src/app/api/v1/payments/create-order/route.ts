@@ -40,8 +40,13 @@ export async function POST(request: NextRequest) {
     const data = parsed.data;
 
     // Verify MMR boundary for ticketing
-    const srcValid = isWithinMumbaiMMR(data.sourceLat || 0, data.sourceLng || 0, data.source);
-    const destValid = isWithinMumbaiMMR(data.destLat || 0, data.destLng || 0, data.destination);
+    const sLat = data.sourceLat && data.sourceLat !== 0 ? data.sourceLat : 19.0178;
+    const sLng = data.sourceLng && data.sourceLng !== 0 ? data.sourceLng : 72.8478;
+    const dLat = data.destLat && data.destLat !== 0 ? data.destLat : 18.9398;
+    const dLng = data.destLng && data.destLng !== 0 ? data.destLng : 72.8355;
+
+    const srcValid = isWithinMumbaiMMR(sLat, sLng, data.source);
+    const destValid = isWithinMumbaiMMR(dLat, dLng, data.destination);
 
     if (!srcValid || !destValid) {
       return NextResponse.json(

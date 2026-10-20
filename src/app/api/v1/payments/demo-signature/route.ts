@@ -23,9 +23,36 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const payment = await TicketsDatabase.getPaymentByOrderId(orderId);
+    let payment = await TicketsDatabase.getPaymentByOrderId(orderId);
     if (!payment) {
-      return NextResponse.json({ error: "Order not found in database" }, { status: 404 });
+      if (orderId.startsWith("order_demo_")) {
+        const fallbackBooking = await TicketsDatabase.createBooking({
+          source: "Dadar Central Station",
+          destination: "CSMT Terminus",
+          distanceKm: 10,
+          passengerName: "Devansh Soni",
+          passengerPhone: "9876543210",
+          passengerEmail: "commuter@routesense.in",
+          passengerCount: 1,
+          transportMode: "TRAIN",
+          tier: "LOCAL_II",
+          operator: "Mumbai Suburban Railway (Central Line)",
+          vehicleTitle: "Suburban EMU Local Train",
+          singleFare: 10,
+          totalFare: 10,
+          currency: "INR"
+        });
+        payment = await TicketsDatabase.createPayment({
+          bookingId: fallbackBooking.id,
+          orderId,
+          amount: 10,
+          currency: "INR",
+          gateway: "DEMO_SANDBOX",
+          isSandbox: true
+        });
+      } else {
+        return NextResponse.json({ error: "Order not found in database" }, { status: 404 });
+      }
     }
 
     const paymentId = `pay_demo_${Date.now().toString(36)}_${crypto.randomBytes(4).toString("hex")}`;

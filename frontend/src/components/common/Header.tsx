@@ -137,16 +137,6 @@ export const Header: React.FC = () => {
           </span>
         </div>
 
-        {/* Notification Bell Pill */}
-        <button
-          type="button"
-          title="Notifications"
-          className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 border border-white/10 flex items-center justify-center text-stone-300 hover:text-white transition-colors relative cursor-pointer"
-        >
-          <Bell className="w-3.5 h-3.5" />
-          <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 rounded-full bg-rose-500 ring-2 ring-[#221e1d]" />
-        </button>
-
         {/* AUTH SECTION: SIGN IN OR USER PROFILE */}
         {!isAuthenticated ? (
           <button
@@ -208,7 +198,7 @@ export const Header: React.FC = () => {
                 {/* Menu Links */}
                 <div className="py-2 space-y-1">
                   <a
-                    href="#transit-passes"
+                    href="#booking-section"
                     onClick={() => setDropdownOpen(false)}
                     className="flex items-center gap-2 px-2.5 py-2 rounded-xl text-stone-300 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
                   >
