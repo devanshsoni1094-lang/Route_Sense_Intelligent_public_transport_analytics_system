@@ -59,6 +59,14 @@ export const BookingSection: React.FC<BookingSectionProps> = ({
   const [passengerEmail, setPassengerEmail] = useState(user?.email || "devansh.soni@gmail.com");
   const [numPassengers, setNumPassengers] = useState(1);
 
+  // Sync state if initial props change from journey search
+  useEffect(() => {
+    if (initialOrigin) setCustomSource(initialOrigin);
+    if (initialDest) setCustomDestination(initialDest);
+    if (initialDistanceKm) setCustomDistanceKm(initialDistanceKm);
+    setOrderData(null);
+  }, [initialOrigin, initialDest, initialDistanceKm]);
+
   useEffect(() => {
     if (user) {
       if (user.name) setPassengerName(user.name);
@@ -141,7 +149,11 @@ export const BookingSection: React.FC<BookingSectionProps> = ({
 
     try {
       // 1. Create or retrieve active payment order on backend
-      if (!currentOrder) {
+      if (
+        !currentOrder ||
+        currentOrder.booking?.source !== customSource.trim() ||
+        currentOrder.booking?.destination !== customDestination.trim()
+      ) {
         const orderRes = await fetch("/api/v1/payments/create-order", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -180,7 +192,13 @@ export const BookingSection: React.FC<BookingSectionProps> = ({
         const demoRes = await fetch("/api/v1/payments/demo-signature", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ orderId: currentOrder.payment.orderId })
+          body: JSON.stringify({
+            orderId: currentOrder.payment.orderId,
+            source: customSource.trim(),
+            destination: customDestination.trim(),
+            transportMode: selectedMode,
+            passengerName: passengerName.trim()
+          })
         });
         const demoData = await demoRes.json();
         if (!demoRes.ok || !demoData.signature) {
@@ -205,7 +223,16 @@ export const BookingSection: React.FC<BookingSectionProps> = ({
           bookingId: currentOrder.booking.id,
           orderId: currentOrder.payment.orderId,
           paymentId,
-          signature
+          signature,
+          source: customSource.trim(),
+          destination: customDestination.trim(),
+          transportMode: selectedMode,
+          tier: activeTier,
+          passengerName: passengerName.trim(),
+          passengerPhone: passengerPhone.trim(),
+          passengerEmail: passengerEmail.trim().toLowerCase(),
+          passengerCount: numPassengers,
+          fareAmount: totalFare
         })
       });
 
@@ -226,7 +253,19 @@ export const BookingSection: React.FC<BookingSectionProps> = ({
       setProcessingStep(3);
       await new Promise((r) => setTimeout(r, 600));
 
-      setConfirmedTicket(verifyData.ticket);
+      setConfirmedTicket({
+        ...verifyData.ticket,
+        source: customSource.trim() || verifyData.ticket.source,
+        destination: customDestination.trim() || verifyData.ticket.destination,
+        passengerName: passengerName.trim() || verifyData.ticket.passengerName,
+        passengerPhone: passengerPhone.trim() || verifyData.ticket.passengerPhone,
+        passengerEmail: passengerEmail.trim() || verifyData.ticket.passengerEmail,
+        passengerCount: numPassengers || verifyData.ticket.passengerCount,
+        fareAmount: totalFare || verifyData.ticket.fareAmount,
+        transportMode: selectedMode || verifyData.ticket.transportMode,
+        vehicleType: fareInfo.vehicleTitle || verifyData.ticket.vehicleType,
+        operator: fareInfo.operator || verifyData.ticket.operator
+      });
       setFlowState("TICKET");
     } catch (err: any) {
       if (!simulateInvalidSignature) {
@@ -374,16 +413,16 @@ export const BookingSection: React.FC<BookingSectionProps> = ({
                     onClick={() => setSelectedMode("BUS")}
                     className={`p-3.5 rounded-2xl flex items-center gap-3 border transition-all cursor-pointer ${
                       selectedMode === "BUS"
-                        ? "bg-rose-500/25 border-rose-500 text-white shadow-lg ring-2 ring-rose-500/50"
-                        : "bg-white/5 border-white/10 text-stone-400 hover:bg-white/10 hover:text-stone-200"
+                        ? "bg-sky-500/25 border-sky-400 text-white shadow-lg ring-2 ring-sky-500/40"
+                        : "bg-white/5 border-white/10 text-slate-300 hover:bg-white/10 hover:text-white"
                     }`}
                   >
-                    <div className={`p-2 rounded-xl shrink-0 ${selectedMode === "BUS" ? "bg-rose-500 text-white" : "bg-white/10 text-stone-300"}`}>
+                    <div className={`p-2 rounded-xl shrink-0 ${selectedMode === "BUS" ? "bg-sky-500 text-white" : "bg-white/10 text-slate-300"}`}>
                       <Bus className="w-5 h-5" />
                     </div>
                     <div className="text-left">
                       <p className="text-sm font-black leading-tight">BEST Bus</p>
-                      <p className="text-[10px] text-stone-400 mt-0.5">Non-AC (₹10+) &bull; AC (₹12+)</p>
+                      <p className="text-[10px] text-slate-300 mt-0.5">Non-AC (₹10+) &bull; AC (₹12+)</p>
                     </div>
                   </button>
 
@@ -393,16 +432,16 @@ export const BookingSection: React.FC<BookingSectionProps> = ({
                     onClick={() => setSelectedMode("TRAIN")}
                     className={`p-3.5 rounded-2xl flex items-center gap-3 border transition-all cursor-pointer ${
                       selectedMode === "TRAIN"
-                        ? "bg-rose-500/25 border-rose-500 text-white shadow-lg ring-2 ring-rose-500/50"
-                        : "bg-white/5 border-white/10 text-stone-400 hover:bg-white/10 hover:text-stone-200"
+                        ? "bg-emerald-500/25 border-emerald-400 text-white shadow-lg ring-2 ring-emerald-500/40"
+                        : "bg-white/5 border-white/10 text-slate-300 hover:bg-white/10 hover:text-white"
                     }`}
                   >
-                    <div className={`p-2 rounded-xl shrink-0 ${selectedMode === "TRAIN" ? "bg-rose-500 text-white" : "bg-white/10 text-stone-300"}`}>
+                    <div className={`p-2 rounded-xl shrink-0 ${selectedMode === "TRAIN" ? "bg-emerald-500 text-white" : "bg-white/10 text-slate-300"}`}>
                       <Train className="w-5 h-5" />
                     </div>
                     <div className="text-left">
                       <p className="text-sm font-black leading-tight">Mumbai Local Train</p>
-                      <p className="text-[10px] text-stone-400 mt-0.5">UTS II (₹5+) &bull; I &bull; AC</p>
+                      <p className="text-[10px] text-slate-300 mt-0.5">UTS II (₹5+) &bull; I &bull; AC</p>
                     </div>
                   </button>
                 </div>
@@ -494,28 +533,34 @@ export const BookingSection: React.FC<BookingSectionProps> = ({
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-[10px] uppercase font-bold text-stone-400 mb-1">
+                    <label className="block text-[10px] uppercase font-bold text-slate-300 mb-1">
                       From (Station / Stop / Locality)
                     </label>
                     <input
                       type="text"
                       value={customSource}
-                      onChange={(e) => setCustomSource(e.target.value)}
+                      onChange={(e) => {
+                        setCustomSource(e.target.value);
+                        setOrderData(null);
+                      }}
                       placeholder="e.g. Dadar, Andheri, CSMT, Thane, Borivali..."
-                      className="w-full bg-white/10 border border-white/15 rounded-xl px-3 py-2 text-xs text-white placeholder-stone-500 focus:outline-none focus:ring-2 focus:ring-rose-500/50"
+                      className="w-full bg-white/10 border border-white/20 rounded-xl px-3 py-2 text-xs text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-sky-500/50"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-[10px] uppercase font-bold text-stone-400 mb-1">
+                    <label className="block text-[10px] uppercase font-bold text-slate-300 mb-1">
                       To (Station / Stop / Locality)
                     </label>
                     <input
                       type="text"
                       value={customDestination}
-                      onChange={(e) => setCustomDestination(e.target.value)}
+                      onChange={(e) => {
+                        setCustomDestination(e.target.value);
+                        setOrderData(null);
+                      }}
                       placeholder="e.g. Churchgate, Kurla, Ghatkopar, Vashi..."
-                      className="w-full bg-white/10 border border-white/15 rounded-xl px-3 py-2 text-xs text-white placeholder-stone-500 focus:outline-none focus:ring-2 focus:ring-rose-500/50"
+                      className="w-full bg-white/10 border border-white/20 rounded-xl px-3 py-2 text-xs text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-sky-500/50"
                     />
                   </div>
                 </div>
@@ -608,17 +653,17 @@ export const BookingSection: React.FC<BookingSectionProps> = ({
             </div>
 
             {/* RIGHT COLUMN: MANDATORY ONLINE QR PAYMENT BOX (5 Cols) */}
-            <div className="lg:col-span-5 rounded-[26px] bg-gradient-to-b from-[#201518] to-[#160f12] border-2 border-rose-500/40 p-5 shadow-2xl flex flex-col justify-between">
+            <div className="lg:col-span-5 rounded-[26px] bg-slate-900/80 backdrop-blur-2xl border border-white/20 p-5 shadow-2xl flex flex-col justify-between">
               <div>
                 {/* Payment Box Header */}
                 <div className="flex items-center justify-between pb-3 border-b border-white/10">
                   <div className="flex items-center gap-2">
-                    <span className="p-1.5 rounded-full bg-rose-500/20 text-rose-400">
+                    <span className="p-1.5 rounded-full bg-sky-500/20 text-sky-300">
                       <QrCode className="w-4 h-4" />
                     </span>
                     <div>
                       <h3 className="text-sm font-extrabold text-white">4. Scan &amp; Pay Online via QR</h3>
-                      <p className="text-[10px] text-stone-400">Cryptographic verification required</p>
+                      <p className="text-[10px] text-slate-300">Cryptographic verification required</p>
                     </div>
                   </div>
                   <span className="px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 text-[10px] font-bold">
@@ -628,15 +673,15 @@ export const BookingSection: React.FC<BookingSectionProps> = ({
 
                 {/* AS-IS UPLOADED QR CODE DISPLAY */}
                 <div className="mt-4 flex flex-col items-center">
-                  <div className="relative p-2.5 rounded-2xl bg-black border-2 border-rose-500/60 shadow-xl shadow-rose-950/70">
+                  <div className="relative p-2.5 rounded-2xl bg-slate-950 border-2 border-sky-400/40 shadow-xl shadow-sky-950/40">
                     {/* Scanner Glowing Corner Markers */}
-                    <div className="absolute top-1.5 left-1.5 w-4 h-4 border-t-2 border-l-2 border-amber-400" />
-                    <div className="absolute top-1.5 right-1.5 w-4 h-4 border-t-2 border-r-2 border-amber-400" />
-                    <div className="absolute bottom-1.5 left-1.5 w-4 h-4 border-b-2 border-l-2 border-amber-400" />
-                    <div className="absolute bottom-1.5 right-1.5 w-4 h-4 border-b-2 border-r-2 border-amber-400" />
+                    <div className="absolute top-1.5 left-1.5 w-4 h-4 border-t-2 border-l-2 border-sky-400" />
+                    <div className="absolute top-1.5 right-1.5 w-4 h-4 border-t-2 border-r-2 border-sky-400" />
+                    <div className="absolute bottom-1.5 left-1.5 w-4 h-4 border-b-2 border-l-2 border-sky-400" />
+                    <div className="absolute bottom-1.5 right-1.5 w-4 h-4 border-b-2 border-r-2 border-sky-400" />
 
                     {/* The As-Is Uploaded QR Code Image */}
-                    <div className="w-48 h-48 sm:w-52 sm:h-52 rounded-xl overflow-hidden bg-black flex items-center justify-center">
+                    <div className="w-48 h-48 sm:w-52 sm:h-52 rounded-xl overflow-hidden bg-white flex items-center justify-center p-1.5">
                       <img
                         src={PAYMENT_QR_BASE64}
                         alt="Official Payment QR Code"
@@ -649,10 +694,10 @@ export const BookingSection: React.FC<BookingSectionProps> = ({
                   </div>
 
                   {/* Amount Due Pill */}
-                  <div className="mt-3 px-4 py-1.5 rounded-2xl bg-rose-500/20 border border-rose-500/40 text-center w-full">
-                    <span className="text-[10px] uppercase font-bold text-stone-400 block">Total Amount to Pay:</span>
+                  <div className="mt-3 px-4 py-2 rounded-2xl bg-sky-500/15 border border-sky-400/30 text-center w-full">
+                    <span className="text-[10px] uppercase font-bold text-slate-300 block">Total Amount to Pay:</span>
                     <span className="text-2xl font-black text-white">₹{totalFare}.00</span>
-                    <span className="text-[10px] text-amber-300 block">
+                    <span className="text-[10px] text-sky-200 block">
                       {numPassengers} commuter{numPassengers > 1 ? "s" : ""} &bull; {fareInfo.vehicleTitle}
                     </span>
                   </div>
@@ -794,20 +839,20 @@ export const BookingSection: React.FC<BookingSectionProps> = ({
             </div>
 
             <div className="text-right">
-              <p className="text-[10px] text-stone-400 uppercase tracking-wider font-bold">Booking PNR</p>
-              <p className="text-xs font-black text-rose-300 font-mono tracking-wider">{confirmedTicket.pnr}</p>
+              <p className="text-[10px] text-slate-400 uppercase tracking-wider font-bold">Booking PNR</p>
+              <p className="text-xs font-black text-sky-300 font-mono tracking-wider">{confirmedTicket.pnr}</p>
             </div>
           </div>
 
           {/* THE TICKET PASS CARD (Printable) */}
           <div
             id="printable-ticket"
-            className="rounded-[26px] bg-gradient-to-b from-[#2b181b] via-[#221719] to-[#1a1315] border border-rose-500/30 p-5 sm:p-7 shadow-2xl relative overflow-hidden flex flex-col gap-5 text-white"
+            className="rounded-[26px] bg-slate-900/95 backdrop-blur-3xl border border-white/20 p-5 sm:p-7 shadow-2xl relative overflow-hidden flex flex-col gap-5 text-white"
           >
             {/* Header Ribbon */}
             <div className="flex items-center justify-between pb-4 border-b border-white/10">
               <div className="flex items-center gap-3">
-                <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-rose-500 to-amber-500 flex items-center justify-center shadow-md">
+                <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-sky-400 via-teal-400 to-emerald-400 flex items-center justify-center shadow-md">
                   <Sparkles className="w-4 h-4 text-white" />
                 </div>
                 <div>
@@ -833,29 +878,29 @@ export const BookingSection: React.FC<BookingSectionProps> = ({
               <div className="flex-1 min-w-0">
                 <p className="text-[10px] font-bold text-stone-400 uppercase">From Station / Stop</p>
                 <p className="text-lg font-black text-white truncate">{confirmedTicket.source}</p>
-                <p className="text-xs font-bold text-rose-400 mt-0.5">
+                <p className="text-xs font-bold text-sky-400 mt-0.5">
                   {new Date(confirmedTicket.validFrom).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
                 </p>
               </div>
 
               <div className="flex flex-col items-center shrink-0">
-                <span className="text-[11px] font-bold text-stone-400">
+                <span className="text-[11px] font-bold text-slate-300">
                   2-Hour Window &bull; {confirmedTicket.passengerCount} Pax
                 </span>
                 <div className="flex items-center gap-1.5 my-1.5">
-                  <div className="w-2.5 h-2.5 rounded-full bg-rose-500" />
-                  <div className="w-16 h-0.5 bg-gradient-to-r from-rose-500 via-orange-400 to-amber-500" />
-                  <div className="w-2.5 h-2.5 rounded-full bg-amber-400" />
+                  <div className="w-2.5 h-2.5 rounded-full bg-sky-400" />
+                  <div className="w-16 h-0.5 bg-gradient-to-r from-sky-400 via-teal-400 to-emerald-400" />
+                  <div className="w-2.5 h-2.5 rounded-full bg-emerald-400" />
                 </div>
-                <span className="text-[10px] font-extrabold px-2.5 py-0.5 rounded-full bg-white/10 text-stone-300">
+                <span className="text-[10px] font-extrabold px-2.5 py-0.5 rounded-full bg-white/10 text-slate-200">
                   {confirmedTicket.transportMode === "BUS" ? "BEST BUS" : "LOCAL TRAIN"}
                 </span>
               </div>
 
               <div className="flex-1 min-w-0 text-right">
-                <p className="text-[10px] font-bold text-stone-400 uppercase">To Destination</p>
+                <p className="text-[10px] font-bold text-slate-400 uppercase">To Destination</p>
                 <p className="text-lg font-black text-white truncate">{confirmedTicket.destination}</p>
-                <p className="text-xs font-bold text-amber-400 mt-0.5">
+                <p className="text-xs font-bold text-emerald-400 mt-0.5">
                   {new Date(confirmedTicket.validUntil).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
                 </p>
               </div>
@@ -881,8 +926,8 @@ export const BookingSection: React.FC<BookingSectionProps> = ({
               </div>
 
               <div>
-                <span className="block text-stone-400 text-[10px]">Total Fare Paid:</span>
-                <strong className="text-rose-400 text-base font-black">₹{confirmedTicket.fareAmount}.00</strong>
+                <span className="block text-slate-400 text-[10px]">Total Fare Paid:</span>
+                <strong className="text-emerald-400 text-base font-black">₹{confirmedTicket.fareAmount}.00</strong>
               </div>
             </div>
 
@@ -956,7 +1001,7 @@ export const BookingSection: React.FC<BookingSectionProps> = ({
             <button
               type="button"
               onClick={handleBookAnother}
-              className="w-full sm:flex-1 py-3.5 rounded-2xl bg-gradient-to-r from-rose-500 to-amber-500 hover:from-rose-600 hover:to-amber-600 text-white font-bold text-xs flex items-center justify-center gap-2 transition-all cursor-pointer shadow-md"
+              className="w-full sm:flex-1 py-3.5 rounded-2xl bg-gradient-to-r from-sky-400 via-teal-400 to-emerald-400 hover:from-sky-300 hover:to-emerald-300 text-slate-950 font-black text-xs flex items-center justify-center gap-2 transition-all cursor-pointer shadow-md"
             >
               <RefreshCw className="w-4 h-4" />
               <span>Book Another Transit Pass</span>

@@ -88,14 +88,14 @@ export const AuthModal: React.FC = () => {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-fade-in font-sans">
-      <div className="relative w-full max-w-md rounded-[32px] bg-stone-900/95 border border-white/15 p-6 sm:p-8 shadow-2xl text-white my-auto overflow-hidden">
+      <div className="relative w-full max-w-md rounded-[32px] bg-slate-900/95 border border-white/20 p-6 sm:p-8 shadow-2xl text-white my-auto overflow-hidden">
         {/* Ambient Top Glow */}
-        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-3/4 h-2 bg-gradient-to-r from-rose-500 via-orange-500 to-amber-500 blur-sm" />
+        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-3/4 h-2 bg-gradient-to-r from-sky-400 via-teal-400 to-emerald-400 blur-sm" />
 
         {/* Close Button */}
         <button
           onClick={closeAuthModal}
-          className="absolute top-5 right-5 p-2 rounded-full bg-white/10 hover:bg-white/20 text-stone-400 hover:text-white transition-all cursor-pointer z-10"
+          className="absolute top-5 right-5 p-2 rounded-full bg-white/10 hover:bg-white/20 text-slate-400 hover:text-white transition-all cursor-pointer z-10"
           title="Close modal"
         >
           <X className="w-4 h-4" />
@@ -103,14 +103,14 @@ export const AuthModal: React.FC = () => {
 
         {/* Brand Header */}
         <div className="text-center mb-6">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-rose-500/15 border border-rose-500/30 text-rose-300 text-[10px] font-black uppercase tracking-wider mb-2 font-mono">
-            <Sparkles className="w-3 h-3 text-amber-300" />
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-sky-500/15 border border-sky-500/30 text-sky-300 text-[10px] font-black uppercase tracking-wider mb-2 font-mono">
+            <Sparkles className="w-3 h-3 text-sky-400" />
             <span>ROUTE SENSE ACCOUNT</span>
           </div>
           <h2 className="text-2xl font-black text-white tracking-tight">
             {mode === "signin" ? "Welcome Back to Mumbai" : "Create Route Sense Account"}
           </h2>
-          <p className="text-xs text-stone-400 mt-1">
+          <p className="text-xs text-slate-300 mt-1">
             {mode === "signin"
               ? "Sign in to manage booked transit passes, e-tickets, and fast checkout."
               : "Register to save your commute corridors and instant contactless booking."}
@@ -204,58 +204,58 @@ export const AuthModal: React.FC = () => {
                   placeholder="e.g. Devansh R. Soni"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
-                  className="w-full bg-black/40 border border-white/10 rounded-2xl pl-10 pr-4 py-2.5 text-xs text-white placeholder-stone-500 focus:outline-none focus:border-rose-500 transition-colors"
+                  className="w-full bg-black/40 border border-white/10 rounded-2xl pl-10 pr-4 py-2.5 text-xs text-white placeholder-slate-400 focus:outline-none focus:border-sky-400 transition-colors"
                 />
               </div>
             </div>
           )}
 
           <div>
-            <label className="block text-[11px] font-bold text-stone-300 uppercase tracking-wider mb-1.5">
+            <label className="block text-[11px] font-bold text-slate-300 uppercase tracking-wider mb-1.5">
               Email Address
             </label>
             <div className="relative">
-              <Mail className="w-4 h-4 text-stone-400 absolute left-3.5 top-3" />
+              <Mail className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
               <input
                 type="email"
                 required
                 placeholder="name@example.com"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="w-full bg-black/40 border border-white/10 rounded-2xl pl-10 pr-4 py-2.5 text-xs text-white placeholder-stone-500 focus:outline-none focus:border-rose-500 transition-colors"
+                className="w-full bg-black/40 border border-white/10 rounded-2xl pl-10 pr-4 py-2.5 text-xs text-white placeholder-slate-400 focus:outline-none focus:border-sky-400 transition-colors"
               />
             </div>
           </div>
 
           <div>
             <div className="flex items-center justify-between mb-1.5">
-              <label className="block text-[11px] font-bold text-stone-300 uppercase tracking-wider">
+              <label className="block text-[11px] font-bold text-slate-300 uppercase tracking-wider">
                 Password
               </label>
               {mode === "signin" && (
                 <button
                   type="button"
                   onClick={() => fillDemoAccount("devansh.soni@gmail.com", "Password@123")}
-                  className="text-[10px] text-amber-400 hover:underline cursor-pointer"
+                  className="text-[10px] text-sky-400 hover:underline cursor-pointer"
                 >
                   Quick Demo Pass?
                 </button>
               )}
             </div>
             <div className="relative">
-              <Lock className="w-4 h-4 text-stone-400 absolute left-3.5 top-3" />
+              <Lock className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
               <input
                 type={showPassword ? "text" : "password"}
                 required
                 placeholder={mode === "signup" ? "Create a strong password (6+ chars)" : "Enter your password"}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="w-full bg-black/40 border border-white/10 rounded-2xl pl-10 pr-10 py-2.5 text-xs text-white placeholder-stone-500 focus:outline-none focus:border-rose-500 transition-colors"
+                className="w-full bg-black/40 border border-white/10 rounded-2xl pl-10 pr-10 py-2.5 text-xs text-white placeholder-slate-400 focus:outline-none focus:border-sky-400 transition-colors"
               />
               <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-3.5 top-3 text-stone-400 hover:text-stone-200 cursor-pointer"
+                className="absolute right-3.5 top-3 text-slate-400 hover:text-white cursor-pointer"
               >
                 {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
               </button>
@@ -272,7 +272,7 @@ export const AuthModal: React.FC = () => {
           <button
             type="submit"
             disabled={submitting || isLoading}
-            className="w-full py-3 rounded-2xl bg-gradient-to-r from-rose-600 via-orange-500 to-amber-500 hover:from-rose-500 hover:to-amber-400 text-white font-extrabold text-xs uppercase tracking-wider shadow-lg shadow-rose-950/50 hover:scale-[1.01] active:scale-[0.99] transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-75 mt-2"
+            className="w-full py-3.5 rounded-2xl bg-white hover:bg-slate-100 text-slate-900 font-extrabold text-xs uppercase tracking-wider shadow-lg hover:scale-[1.01] active:scale-[0.99] transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-75 mt-2"
           >
             {submitting ? (
               <>

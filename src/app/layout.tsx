@@ -31,18 +31,18 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" className="dark">
-      <body className="min-h-screen bg-[#151211] text-stone-100 flex flex-col items-center justify-start p-2 sm:p-4 md:p-6 lg:p-8 font-sans antialiased selection:bg-rose-500/30 selection:text-rose-200">
+      <body className="min-h-screen text-slate-100 flex flex-col items-center justify-start p-2 sm:p-4 md:p-6 lg:p-8 font-sans antialiased selection:bg-sky-500/30 selection:text-sky-200">
         <ClientProviders>
         {/* SPATIAL WORKSPACE WRAPPER (Window + Left Vertical Dock) */}
         <div className="w-full max-w-6xl relative flex items-start gap-4">
           
           {/* LEFT FLOATING VERTICAL DOCK (Clean, Minimal, 100% Functional) */}
-          <aside className="hidden md:flex flex-col items-center gap-3 p-2 rounded-full bg-stone-900/80 backdrop-blur-3xl border border-white/10 shadow-2xl shrink-0 sticky top-12 z-30">
+          <aside className="hidden md:flex flex-col items-center gap-3 p-2 rounded-full bg-slate-900/60 backdrop-blur-3xl border border-white/20 shadow-2xl shrink-0 sticky top-12 z-30">
             {/* Active Home Button */}
             <a
               href="/"
               title="Home — Mumbai Transit Overview"
-              className="w-9 h-9 rounded-full bg-gradient-to-tr from-orange-600 via-rose-500 to-amber-500 text-white flex items-center justify-center shadow-lg shadow-orange-950/60 hover:scale-105 transition-all cursor-pointer"
+              className="w-9 h-9 rounded-full bg-gradient-to-tr from-sky-500 via-teal-500 to-emerald-400 text-white flex items-center justify-center shadow-lg shadow-sky-950/60 hover:scale-105 transition-all cursor-pointer"
             >
               <Home className="w-4 h-4" />
             </a>

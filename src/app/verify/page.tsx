@@ -153,17 +153,17 @@ function TicketVerificationContent() {
 
         <Link
           href="/#booking-section"
-          className="px-4 py-2 rounded-full bg-white/10 hover:bg-white/15 border border-white/10 text-stone-200 text-xs font-bold flex items-center gap-1.5 transition-colors"
+          className="px-4 py-2 rounded-full bg-white/10 hover:bg-white/15 border border-white/10 text-slate-200 text-xs font-bold flex items-center gap-1.5 transition-colors"
         >
-          <Ticket className="w-3.5 h-3.5 text-rose-400" />
+          <Ticket className="w-3.5 h-3.5 text-sky-400" />
           <span>Book New Pass</span>
         </Link>
       </div>
 
       {/* Quick Test Sample Passes Bar */}
-      <div className="bg-stone-900/60 border border-white/5 rounded-2xl p-3 flex flex-wrap items-center gap-2 text-xs">
-        <span className="text-stone-400 font-bold text-[11px] uppercase tracking-wider flex items-center gap-1.5 mr-1">
-          <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+      <div className="bg-slate-900/60 border border-white/10 rounded-2xl p-3 flex flex-wrap items-center gap-2 text-xs">
+        <span className="text-slate-300 font-bold text-[11px] uppercase tracking-wider flex items-center gap-1.5 mr-1">
+          <Sparkles className="w-3.5 h-3.5 text-sky-400" />
           Quick Test Commuter Passes:
         </span>
         <button
@@ -213,7 +213,7 @@ function TicketVerificationContent() {
       </div>
 
       {/* Query Search / Scan Bar */}
-      <div className="bg-stone-900/90 border border-white/10 rounded-[24px] p-4 shadow-xl">
+      <div className="bg-slate-900/90 border border-white/20 rounded-[24px] p-4 shadow-xl">
         <form
           onSubmit={(e) => {
             e.preventDefault();
@@ -222,13 +222,13 @@ function TicketVerificationContent() {
           className="flex flex-col sm:flex-row items-center gap-3"
         >
           <div className="relative flex-1 w-full">
-            <QrCode className="w-4 h-4 text-stone-400 absolute left-3.5 top-3" />
+            <QrCode className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
             <input
               type="text"
               placeholder="Enter Ticket Number (RS-MUM-2026-...), PNR, or paste QR token..."
               value={inputQuery}
               onChange={(e) => setInputQuery(e.target.value)}
-              className="w-full bg-black/40 border border-white/10 rounded-2xl pl-10 pr-16 py-2.5 text-xs text-white placeholder-stone-500 focus:outline-none focus:border-rose-500 transition-colors font-mono"
+              className="w-full bg-black/40 border border-white/10 rounded-2xl pl-10 pr-16 py-2.5 text-xs text-white placeholder-slate-400 focus:outline-none focus:border-sky-400 transition-colors font-mono"
             />
             {typeof window !== "undefined" && navigator?.clipboard && (
               <button
@@ -242,7 +242,7 @@ function TicketVerificationContent() {
                     }
                   } catch {}
                 }}
-                className="absolute right-2.5 top-2 px-2.5 py-1 rounded-lg bg-white/10 hover:bg-white/20 text-stone-300 hover:text-white text-[10px] font-bold transition-all cursor-pointer"
+                className="absolute right-2.5 top-2 px-2.5 py-1 rounded-lg bg-white/10 hover:bg-white/20 text-slate-300 hover:text-white text-[10px] font-bold transition-all cursor-pointer"
                 title="Paste from clipboard"
               >
                 Paste
@@ -253,7 +253,7 @@ function TicketVerificationContent() {
           <button
             type="submit"
             disabled={loading}
-            className="w-full sm:w-auto px-6 py-2.5 rounded-2xl bg-gradient-to-r from-rose-600 via-orange-500 to-amber-500 hover:from-rose-500 hover:to-amber-400 text-white font-black text-xs uppercase tracking-wider shadow-lg shadow-rose-950/50 hover:scale-105 active:scale-95 transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-75"
+            className="w-full sm:w-auto px-6 py-2.5 rounded-2xl bg-white hover:bg-slate-100 text-slate-900 font-black text-xs uppercase tracking-wider shadow-lg hover:scale-105 active:scale-95 transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-75"
           >
             {loading ? (
               <>

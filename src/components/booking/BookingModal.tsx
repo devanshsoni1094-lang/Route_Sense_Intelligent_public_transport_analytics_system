@@ -404,7 +404,13 @@ export const BookingModal: React.FC<BookingModalProps> = ({
         const demoRes = await fetch("/api/v1/payments/demo-signature", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ orderId: orderData.payment.orderId })
+          body: JSON.stringify({
+            orderId: orderData.payment.orderId,
+            source: customSource.trim(),
+            destination: customDestination.trim(),
+            transportMode: selectedMode,
+            passengerName: passengerName.trim()
+          })
         });
         const demoData = await demoRes.json();
         if (!demoRes.ok || !demoData.signature) {
@@ -429,7 +435,16 @@ export const BookingModal: React.FC<BookingModalProps> = ({
           bookingId: orderData.booking.id,
           orderId: orderData.payment.orderId,
           paymentId,
-          signature
+          signature,
+          source: customSource.trim(),
+          destination: customDestination.trim(),
+          transportMode: selectedMode,
+          tier: activeTier,
+          passengerName: passengerName.trim(),
+          passengerPhone: passengerPhone.trim(),
+          passengerEmail: passengerEmail.trim().toLowerCase(),
+          passengerCount: numPassengers,
+          fareAmount: totalFare
         })
       });
 
@@ -452,7 +467,19 @@ export const BookingModal: React.FC<BookingModalProps> = ({
       await new Promise((r) => setTimeout(r, 600));
 
       // Successfully verified on backend and issued ticket
-      setConfirmedTicket(verifyData.ticket);
+      setConfirmedTicket({
+        ...verifyData.ticket,
+        source: customSource.trim() || verifyData.ticket.source,
+        destination: customDestination.trim() || verifyData.ticket.destination,
+        passengerName: passengerName.trim() || verifyData.ticket.passengerName,
+        passengerPhone: passengerPhone.trim() || verifyData.ticket.passengerPhone,
+        passengerEmail: passengerEmail.trim() || verifyData.ticket.passengerEmail,
+        passengerCount: numPassengers || verifyData.ticket.passengerCount,
+        fareAmount: totalFare || verifyData.ticket.fareAmount,
+        transportMode: selectedMode || verifyData.ticket.transportMode,
+        vehicleType: fareInfo.vehicleTitle || verifyData.ticket.vehicleType,
+        operator: fareInfo.operator || verifyData.ticket.operator
+      });
       setFlowState("TICKET");
     } catch (err: any) {
       if (!simulateInvalidSignature) {
@@ -540,14 +567,14 @@ export const BookingModal: React.FC<BookingModalProps> = ({
             {/* Modal Title Header */}
             <div>
               <div className="flex items-center gap-2 mb-1">
-                <span className="p-1.5 rounded-full bg-rose-500/20 text-rose-400 border border-rose-500/30">
+                <span className="p-1.5 rounded-full bg-sky-500/20 text-sky-300 border border-sky-500/30">
                   <Ticket className="w-4 h-4" />
                 </span>
                 <h3 className="text-xl font-extrabold tracking-tight text-white">
                   Mumbai Transit E-Ticket Booking
                 </h3>
               </div>
-              <p className="text-xs text-stone-400">
+              <p className="text-xs text-slate-300">
                 Official digital ticketing strictly for <strong>BEST Bus</strong> &amp;{" "}
                 <strong>Mumbai Local Trains</strong>. Pay online via QR code.
               </p>
@@ -563,9 +590,9 @@ export const BookingModal: React.FC<BookingModalProps> = ({
 
             {/* STRICT MODE SELECTOR: BUS OR TRAIN ONLY */}
             <div className="space-y-2">
-              <label className="text-[11px] font-bold text-stone-300 uppercase tracking-wider flex items-center justify-between">
+              <label className="text-[11px] font-bold text-slate-300 uppercase tracking-wider flex items-center justify-between">
                 <span>Select Public Transit Mode:</span>
-                <span className="text-[10px] text-amber-400 font-semibold">Bus &amp; Train Only</span>
+                <span className="text-[10px] text-sky-300 font-semibold">Bus &amp; Train Only</span>
               </label>
 
               <div className="grid grid-cols-2 gap-3">
@@ -575,20 +602,20 @@ export const BookingModal: React.FC<BookingModalProps> = ({
                   onClick={() => setSelectedMode("BUS")}
                   className={`p-3.5 rounded-2xl flex items-center gap-3 border transition-all cursor-pointer ${
                     selectedMode === "BUS"
-                      ? "bg-rose-500/25 border-rose-500 text-white shadow-lg ring-2 ring-rose-500/50"
-                      : "bg-white/5 border-white/10 text-stone-400 hover:bg-white/10 hover:text-stone-200"
+                      ? "bg-sky-500/25 border-sky-400 text-white shadow-lg ring-2 ring-sky-500/40"
+                      : "bg-white/5 border-white/10 text-slate-300 hover:bg-white/10 hover:text-white"
                   }`}
                 >
                   <div
                     className={`p-2 rounded-xl shrink-0 ${
-                      selectedMode === "BUS" ? "bg-rose-500 text-white" : "bg-white/10 text-stone-300"
+                      selectedMode === "BUS" ? "bg-sky-500 text-white" : "bg-white/10 text-slate-300"
                     }`}
                   >
                     <Bus className="w-5 h-5" />
                   </div>
                   <div className="text-left">
                     <p className="text-xs font-black leading-tight">BEST Bus</p>
-                    <p className="text-[10px] text-stone-400 mt-0.5">Non-AC (₹10+) &bull; AC (₹12+)</p>
+                    <p className="text-[10px] text-slate-300 mt-0.5">Non-AC (₹10+) &bull; AC (₹12+)</p>
                   </div>
                 </button>
 
@@ -598,20 +625,20 @@ export const BookingModal: React.FC<BookingModalProps> = ({
                   onClick={() => setSelectedMode("TRAIN")}
                   className={`p-3.5 rounded-2xl flex items-center gap-3 border transition-all cursor-pointer ${
                     selectedMode === "TRAIN"
-                      ? "bg-rose-500/25 border-rose-500 text-white shadow-lg ring-2 ring-rose-500/50"
-                      : "bg-white/5 border-white/10 text-stone-400 hover:bg-white/10 hover:text-stone-200"
+                      ? "bg-emerald-500/25 border-emerald-400 text-white shadow-lg ring-2 ring-emerald-500/40"
+                      : "bg-white/5 border-white/10 text-slate-300 hover:bg-white/10 hover:text-white"
                   }`}
                 >
                   <div
                     className={`p-2 rounded-xl shrink-0 ${
-                      selectedMode === "TRAIN" ? "bg-rose-500 text-white" : "bg-white/10 text-stone-300"
+                      selectedMode === "TRAIN" ? "bg-emerald-500 text-white" : "bg-white/10 text-slate-300"
                     }`}
                   >
                     <Train className="w-5 h-5" />
                   </div>
                   <div className="text-left">
                     <p className="text-xs font-black leading-tight">Mumbai Local Train</p>
-                    <p className="text-[10px] text-stone-400 mt-0.5">UTS II (₹5+) &bull; I &amp; AC</p>
+                    <p className="text-[10px] text-slate-300 mt-0.5">UTS II (₹5+) &bull; I &amp; AC</p>
                   </div>
                 </button>
               </div>
@@ -703,28 +730,34 @@ export const BookingModal: React.FC<BookingModalProps> = ({
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-[10px] uppercase font-bold text-stone-400 mb-1">
+                  <label className="block text-[10px] uppercase font-bold text-slate-300 mb-1">
                     From (Station / Stop / Locality)
                   </label>
                   <input
                     type="text"
                     value={customSource}
-                    onChange={(e) => setCustomSource(e.target.value)}
+                    onChange={(e) => {
+                      setCustomSource(e.target.value);
+                      setOrderData(null);
+                    }}
                     placeholder="e.g. Dadar, Andheri, CSMT, Ghatkopar..."
-                    className="w-full bg-white/10 border border-white/15 rounded-xl px-3 py-2 text-xs text-white placeholder-stone-500 focus:outline-none focus:ring-2 focus:ring-rose-500/50"
+                    className="w-full bg-white/10 border border-white/20 rounded-xl px-3 py-2 text-xs text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-sky-500/50"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-[10px] uppercase font-bold text-stone-400 mb-1">
+                  <label className="block text-[10px] uppercase font-bold text-slate-300 mb-1">
                     To (Station / Stop / Locality)
                   </label>
                   <input
                     type="text"
                     value={customDestination}
-                    onChange={(e) => setCustomDestination(e.target.value)}
+                    onChange={(e) => {
+                      setCustomDestination(e.target.value);
+                      setOrderData(null);
+                    }}
                     placeholder="e.g. Borivali, Churchgate, Thane, Vashi..."
-                    className="w-full bg-white/10 border border-white/15 rounded-xl px-3 py-2 text-xs text-white placeholder-stone-500 focus:outline-none focus:ring-2 focus:ring-rose-500/50"
+                    className="w-full bg-white/10 border border-white/20 rounded-xl px-3 py-2 text-xs text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-sky-500/50"
                   />
                 </div>
               </div>
@@ -819,8 +852,8 @@ export const BookingModal: React.FC<BookingModalProps> = ({
             <div className="pt-3 border-t border-white/15 flex flex-col gap-3">
               <div className="flex items-center justify-between text-xs">
                 <div>
-                  <span className="text-stone-400">Total Transit Fare ({numPassengers} Commuter{numPassengers > 1 ? "s" : ""}):</span>
-                  <p className="text-[10px] text-rose-300 font-medium">
+                  <span className="text-slate-300">Total Transit Fare ({numPassengers} Commuter{numPassengers > 1 ? "s" : ""}):</span>
+                  <p className="text-[10px] text-sky-300 font-medium">
                     {fareInfo.vehicleTitle} &bull; {customDistanceKm} km
                   </p>
                 </div>
@@ -831,7 +864,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({
                 type="button"
                 onClick={handleProceedToPayment}
                 disabled={isSubmitting}
-                className="w-full py-3.5 rounded-2xl bg-gradient-to-r from-rose-500 via-orange-500 to-amber-500 hover:from-rose-600 hover:to-orange-600 text-white font-extrabold text-sm tracking-wide shadow-xl shadow-rose-950/60 hover:scale-[1.01] active:scale-[0.99] transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                className="w-full py-3.5 rounded-2xl bg-white hover:bg-slate-100 text-slate-900 font-extrabold text-sm tracking-wide shadow-xl hover:scale-[1.01] active:scale-[0.99] transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {isSubmitting ? (
                   <>
@@ -917,15 +950,15 @@ export const BookingModal: React.FC<BookingModalProps> = ({
 
             {/* PROMINENT AS-IS UPLOADED QR CODE DISPLAY */}
             <div className="flex flex-col items-center justify-center gap-3">
-              <div className="relative p-3 rounded-[28px] bg-black/90 border-2 border-rose-500/60 shadow-2xl shadow-rose-950/80 group">
+              <div className="relative p-3 rounded-[28px] bg-slate-950 border-2 border-sky-400/50 shadow-2xl shadow-sky-950/60 group">
                 {/* Scanner Glowing Corner Markers */}
-                <div className="absolute top-2 left-2 w-5 h-5 border-t-2 border-l-2 border-amber-400" />
-                <div className="absolute top-2 right-2 w-5 h-5 border-t-2 border-r-2 border-amber-400" />
-                <div className="absolute bottom-2 left-2 w-5 h-5 border-b-2 border-l-2 border-amber-400" />
-                <div className="absolute bottom-2 right-2 w-5 h-5 border-b-2 border-r-2 border-amber-400" />
+                <div className="absolute top-2 left-2 w-5 h-5 border-t-2 border-l-2 border-sky-400" />
+                <div className="absolute top-2 right-2 w-5 h-5 border-t-2 border-r-2 border-sky-400" />
+                <div className="absolute bottom-2 left-2 w-5 h-5 border-b-2 border-l-2 border-sky-400" />
+                <div className="absolute bottom-2 right-2 w-5 h-5 border-b-2 border-r-2 border-sky-400" />
 
                 {/* The As-Is Uploaded QR Code Image */}
-                <div className="w-52 h-52 sm:w-60 sm:h-60 rounded-2xl overflow-hidden bg-black flex items-center justify-center">
+                <div className="w-52 h-52 sm:w-60 sm:h-60 rounded-2xl overflow-hidden bg-white flex items-center justify-center p-2">
                   <img
                     src={PAYMENT_QR_BASE64}
                     alt="Official UPI Payment QR Code"
@@ -938,7 +971,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({
               </div>
 
               {/* Amount Due Badge */}
-              <div className="px-5 py-2 rounded-2xl bg-gradient-to-r from-rose-500/25 via-amber-500/20 to-rose-500/25 border border-rose-500/40 text-center w-full">
+              <div className="px-5 py-2.5 rounded-2xl bg-sky-500/15 border border-sky-400/30 text-center w-full">
                 <span className="text-[10px] uppercase font-bold text-stone-400 block tracking-wider">
                   Amount to Pay:
                 </span>
@@ -1095,27 +1128,27 @@ export const BookingModal: React.FC<BookingModalProps> = ({
               </div>
 
               <div className="text-right">
-                <p className="text-[10px] text-stone-400 uppercase tracking-wider font-bold">Booking PNR</p>
-                <p className="text-xs font-black text-rose-300 font-mono tracking-wider">{confirmedTicket.pnr}</p>
+                <p className="text-[10px] text-slate-400 uppercase tracking-wider font-bold">Booking PNR</p>
+                <p className="text-xs font-black text-sky-300 font-mono tracking-wider">{confirmedTicket.pnr}</p>
               </div>
             </div>
 
             {/* THE TICKET PASS SURFACE (Printable) */}
             <div
               id="printable-ticket"
-              className="rounded-[26px] bg-gradient-to-b from-[#2b181b] via-[#221719] to-[#1a1315] border border-rose-500/30 p-5 shadow-2xl relative overflow-hidden flex flex-col gap-4 text-white"
+              className="rounded-[26px] bg-slate-900/95 backdrop-blur-3xl border border-white/20 p-5 shadow-2xl relative overflow-hidden flex flex-col gap-4 text-white"
             >
               {/* Header Ribbon */}
               <div className="flex items-center justify-between pb-3 border-b border-white/10">
                 <div className="flex items-center gap-2">
-                  <div className="w-7 h-7 rounded-xl bg-gradient-to-tr from-rose-500 to-amber-500 flex items-center justify-center shadow-md">
+                  <div className="w-7 h-7 rounded-xl bg-gradient-to-tr from-sky-400 via-teal-400 to-emerald-400 flex items-center justify-center shadow-md">
                     <Sparkles className="w-4 h-4 text-white" />
                   </div>
                   <div>
                     <h4 className="text-sm font-black tracking-tight text-white leading-tight">
                       ROUTE SENSE MUMBAI E-PASS
                     </h4>
-                    <p className="text-[9px] text-stone-400 uppercase tracking-widest font-bold">
+                    <p className="text-[9px] text-slate-400 uppercase tracking-widest font-bold">
                       {confirmedTicket.transportMode === "BUS" ? "BEST Bus Digital Boarding Pass" : "Mumbai Suburban Railway Ticket"}
                     </p>
                   </div>
@@ -1125,38 +1158,38 @@ export const BookingModal: React.FC<BookingModalProps> = ({
                   <span className="px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 text-[10px] font-extrabold uppercase">
                     ● ACTIVE PASS
                   </span>
-                  <p className="text-[9px] font-mono text-stone-400 mt-0.5">{confirmedTicket.ticketNumber}</p>
+                  <p className="text-[9px] font-mono text-slate-400 mt-0.5">{confirmedTicket.ticketNumber}</p>
                 </div>
               </div>
 
               {/* Journey Route Banner */}
               <div className="flex items-center justify-between gap-4 py-2">
                 <div className="flex-1 min-w-0">
-                  <p className="text-[10px] font-bold text-stone-400 uppercase">From</p>
+                  <p className="text-[10px] font-bold text-slate-400 uppercase">From</p>
                   <p className="text-base font-black text-white truncate">{confirmedTicket.source}</p>
-                  <p className="text-xs font-bold text-rose-400 mt-0.5">
+                  <p className="text-xs font-bold text-sky-400 mt-0.5">
                     {new Date(confirmedTicket.validFrom).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
                   </p>
                 </div>
 
                 <div className="flex flex-col items-center shrink-0">
-                  <span className="text-[10px] font-bold text-stone-400">
+                  <span className="text-[10px] font-bold text-slate-300">
                     2-Hour Window &bull; {confirmedTicket.passengerCount} Pax
                   </span>
                   <div className="flex items-center gap-1 my-1">
-                    <div className="w-2 h-2 rounded-full bg-rose-500" />
-                    <div className="w-12 h-0.5 bg-gradient-to-r from-rose-500 via-orange-400 to-amber-500" />
-                    <div className="w-2 h-2 rounded-full bg-amber-400" />
+                    <div className="w-2 h-2 rounded-full bg-sky-400" />
+                    <div className="w-12 h-0.5 bg-gradient-to-r from-sky-400 via-teal-400 to-emerald-400" />
+                    <div className="w-2 h-2 rounded-full bg-emerald-400" />
                   </div>
-                  <span className="text-[9px] font-extrabold px-2 py-0.5 rounded-full bg-white/10 text-stone-300">
+                  <span className="text-[9px] font-extrabold px-2 py-0.5 rounded-full bg-white/10 text-slate-200">
                     {confirmedTicket.transportMode === "BUS" ? "BEST BUS" : "LOCAL TRAIN"}
                   </span>
                 </div>
 
                 <div className="flex-1 min-w-0 text-right">
-                  <p className="text-[10px] font-bold text-stone-400 uppercase">To</p>
+                  <p className="text-[10px] font-bold text-slate-400 uppercase">To</p>
                   <p className="text-base font-black text-white truncate">{confirmedTicket.destination}</p>
-                  <p className="text-xs font-bold text-amber-400 mt-0.5">
+                  <p className="text-xs font-bold text-emerald-400 mt-0.5">
                     {new Date(confirmedTicket.validUntil).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
                   </p>
                 </div>
@@ -1165,25 +1198,25 @@ export const BookingModal: React.FC<BookingModalProps> = ({
               {/* Detailed Info Grid */}
               <div className="p-3.5 rounded-2xl bg-black/40 border border-white/10 grid grid-cols-2 sm:grid-cols-4 gap-3 text-[11px]">
                 <div>
-                  <span className="block text-stone-400 text-[10px]">Travel Date:</span>
+                  <span className="block text-slate-400 text-[10px]">Travel Date:</span>
                   <strong className="text-white text-xs">{confirmedTicket.journeyDate}</strong>
                 </div>
 
                 <div>
-                  <span className="block text-stone-400 text-[10px]">Vehicle / Class:</span>
+                  <span className="block text-slate-400 text-[10px]">Vehicle / Class:</span>
                   <strong className="text-white text-xs truncate block">{confirmedTicket.vehicleType}</strong>
                 </div>
 
                 <div>
-                  <span className="block text-stone-400 text-[10px]">Passenger:</span>
+                  <span className="block text-slate-400 text-[10px]">Passenger:</span>
                   <strong className="text-white text-xs truncate block">
                     {confirmedTicket.passengerName} (x{confirmedTicket.passengerCount})
                   </strong>
                 </div>
 
                 <div>
-                  <span className="block text-stone-400 text-[10px]">Total Fare Paid:</span>
-                  <strong className="text-rose-400 text-sm font-black">₹{confirmedTicket.fareAmount}.00</strong>
+                  <span className="block text-slate-400 text-[10px]">Total Fare Paid:</span>
+                  <strong className="text-emerald-400 text-sm font-black">₹{confirmedTicket.fareAmount}.00</strong>
                 </div>
               </div>
 
@@ -1258,7 +1291,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({
               <button
                 type="button"
                 onClick={onClose}
-                className="w-full sm:flex-1 py-3 rounded-2xl bg-gradient-to-r from-rose-500 to-amber-500 hover:from-rose-600 hover:to-amber-600 text-white font-bold text-xs flex items-center justify-center gap-2 transition-all cursor-pointer shadow-md"
+                className="w-full sm:flex-1 py-3 rounded-2xl bg-gradient-to-r from-sky-400 via-teal-400 to-emerald-400 hover:from-sky-300 hover:to-emerald-300 text-slate-950 font-black text-xs flex items-center justify-center gap-2 transition-all cursor-pointer shadow-md"
               >
                 <span>Done / Close</span>
                 <Check className="w-4 h-4" />

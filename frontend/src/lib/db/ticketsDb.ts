@@ -551,6 +551,8 @@ export const TicketsDatabase = {
     bookingId: string;
     paymentId: string;
     tokenSigner: (ticketId: string, pnr: string, amount: number) => { token: string; qrPayload: string; verificationUrl: string };
+    source?: string;
+    destination?: string;
   }): Promise<TicketRecord> {
     return withLock(() => {
       ensureInit();
@@ -603,8 +605,8 @@ export const TicketsDatabase = {
         transportMode: booking.transportMode,
         operator: booking.operator,
         vehicleType: booking.vehicleTitle,
-        source: booking.source,
-        destination: booking.destination,
+        source: params.source || booking.source,
+        destination: params.destination || booking.destination,
         passengerName: booking.passengerName,
         passengerPhone: booking.passengerPhone,
         passengerEmail: booking.passengerEmail,

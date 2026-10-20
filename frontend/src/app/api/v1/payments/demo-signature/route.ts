@@ -6,7 +6,7 @@ import { TicketsDatabase } from "@/lib/db/ticketsDb";
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { orderId } = body;
+    const { orderId, source, destination, transportMode, passengerName } = body;
 
     if (!orderId || typeof orderId !== "string") {
       return NextResponse.json({ error: "orderId is required" }, { status: 400 });
@@ -27,17 +27,17 @@ export async function POST(request: NextRequest) {
     if (!payment) {
       if (orderId.startsWith("order_demo_")) {
         const fallbackBooking = await TicketsDatabase.createBooking({
-          source: "Dadar Central Station",
-          destination: "CSMT Terminus",
+          source: (source && String(source).trim()) || "Dadar Central Station",
+          destination: (destination && String(destination).trim()) || "CSMT Terminus",
           distanceKm: 10,
-          passengerName: "Devansh Soni",
+          passengerName: (passengerName && String(passengerName).trim()) || "Devansh Soni",
           passengerPhone: "9876543210",
           passengerEmail: "commuter@routesense.in",
           passengerCount: 1,
-          transportMode: "TRAIN",
+          transportMode: transportMode || "TRAIN",
           tier: "LOCAL_II",
-          operator: "Mumbai Suburban Railway (Central Line)",
-          vehicleTitle: "Suburban EMU Local Train",
+          operator: transportMode === "BUS" ? "BEST Undertaking" : "Mumbai Suburban Railway (Central Line)",
+          vehicleTitle: transportMode === "BUS" ? "BEST Bus" : "Suburban EMU Local Train",
           singleFare: 10,
           totalFare: 10,
           currency: "INR"

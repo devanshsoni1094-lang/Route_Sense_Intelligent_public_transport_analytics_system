@@ -660,10 +660,10 @@ export default function HomePage() {
               <button
                 key={cat.id}
                 onClick={() => setActiveCategory(cat.id as any)}
-                className={`px-3 py-1.5 rounded-full text-xs font-semibold flex items-center gap-1.5 transition-all shadow-sm cursor-pointer hover:scale-105 active:scale-95 ${
+                className={`px-3.5 py-1.5 rounded-full text-xs font-semibold flex items-center gap-1.5 transition-all shadow-sm cursor-pointer hover:scale-105 active:scale-95 ${
                   isActive
-                    ? "bg-[#fce7df] text-stone-900 border border-[#fce7df] shadow-md font-bold scale-105"
-                    : "bg-white/10 text-stone-300 hover:bg-white/15 border border-white/10"
+                    ? "bg-white text-slate-900 border border-white shadow-lg font-extrabold scale-105"
+                    : "bg-white/10 text-slate-200 hover:bg-white/20 border border-white/15"
                 }`}
               >
                 <span>{cat.emoji}</span>
@@ -693,13 +693,13 @@ export default function HomePage() {
           <div className="flex items-center justify-between mb-3">
             <h4 className="text-sm font-bold text-white flex items-center gap-1.5">
               <span>Mumbai Operators</span>
-              <span className="text-[10px] text-rose-300 bg-rose-500/20 px-1.5 py-0.5 rounded-full font-mono">
+              <span className="text-[10px] text-sky-300 bg-sky-500/20 px-1.5 py-0.5 rounded-full font-mono">
                 RTO Sept 2026
               </span>
             </h4>
             <span
               onClick={() => setActiveCategory("ALL")}
-              className="text-xs font-semibold text-amber-400 hover:text-amber-300 cursor-pointer"
+              className="text-xs font-semibold text-sky-300 hover:text-sky-200 cursor-pointer"
             >
               See all &gt;
             </span>
@@ -718,13 +718,13 @@ export default function HomePage() {
                     {op.icon}
                   </div>
                   <div>
-                    <p className="text-xs font-bold text-white group-hover:text-rose-300 transition-colors">
+                    <p className="text-xs font-bold text-white group-hover:text-sky-300 transition-colors">
                       {op.name}
                     </p>
-                    <p className="text-[10px] text-stone-400">{op.subtitle}</p>
+                    <p className="text-[10px] text-slate-300">{op.subtitle}</p>
                   </div>
                 </div>
-                <ChevronRight className="w-4 h-4 text-stone-500 group-hover:text-white transition-colors group-hover:translate-x-1" />
+                <ChevronRight className="w-4 h-4 text-slate-400 group-hover:text-white transition-colors group-hover:translate-x-1" />
               </div>
             ))}
           </div>
@@ -848,8 +848,8 @@ export default function HomePage() {
                   onClick={() => setPassengers(p)}
                   className={`px-2.5 py-0.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
                     passengers === p
-                      ? "bg-rose-500 text-white shadow-md"
-                      : "bg-white/10 text-stone-300 hover:bg-white/15"
+                      ? "bg-white text-slate-900 shadow-md font-extrabold"
+                      : "bg-white/10 text-slate-300 hover:bg-white/15"
                   }`}
                 >
                   {p}
@@ -872,7 +872,7 @@ export default function HomePage() {
         <div className="flex items-center justify-between mb-3">
           <h3 className="text-base sm:text-lg font-bold text-white flex items-center gap-2">
             <span>Available Mumbai Journey Passes</span>
-            <span className="px-2 py-0.5 rounded-full bg-rose-500/20 text-rose-300 border border-rose-500/30 text-xs font-semibold">
+            <span className="px-2 py-0.5 rounded-full bg-sky-500/20 text-sky-300 border border-sky-500/30 text-xs font-semibold">
               {sortedAndFilteredOptions.length} Verified Options
             </span>
           </h3>
@@ -882,7 +882,7 @@ export default function HomePage() {
               setActiveCategory("ALL");
               setSmartFilter("SPEED");
             }}
-            className="text-xs font-semibold text-amber-400 hover:text-amber-300 cursor-pointer"
+            className="text-xs font-semibold text-sky-300 hover:text-sky-200 cursor-pointer"
           >
             Reset Filters &gt;
           </span>
@@ -1026,7 +1026,7 @@ export default function HomePage() {
                       </span>
 
                       {opt.recommended && (
-                        <span className="text-[9px] font-extrabold px-1.5 py-0.5 rounded-full bg-rose-500 text-white shadow-sm">
+                        <span className="text-[9px] font-black px-1.5 py-0.5 rounded-full bg-gradient-to-r from-sky-400 to-emerald-400 text-slate-950 shadow-sm">
                           RECOMMENDED
                         </span>
                       )}
@@ -1100,10 +1100,10 @@ export default function HomePage() {
                           setBookingJourney(opt);
                           setIsBookingOpen(true);
                         }}
-                        className="px-3 py-1 rounded-full bg-[#3d1519] hover:bg-rose-500 border border-rose-500/40 text-rose-200 hover:text-white font-black text-xs transition-all shadow-sm cursor-pointer flex items-center gap-1 active:scale-95"
+                        className="px-3.5 py-1.5 rounded-full bg-white/10 hover:bg-white text-white hover:text-slate-900 border border-white/20 font-black text-xs transition-all shadow-sm cursor-pointer flex items-center gap-1 active:scale-95"
                       >
                         <span>₹{opt.quoted_price_inr ?? opt.fare_inr}</span>
-                        <span className="text-[10px] text-rose-300 font-medium">
+                        <span className="text-[10px] text-sky-300 font-medium">
                           &bull; {opt.transport_mode === "BUS" || opt.transport_mode === "TRAIN" ? "Book Ticket" : "Book Pass"}
                         </span>
                       </button>
@@ -1239,9 +1239,9 @@ export default function HomePage() {
             {/* Steps */}
             {selectedOption?.steps && selectedOption.steps.length > 0 && (
               <>
-                <div className="mb-2 flex items-center justify-between text-[11px] text-stone-400">
-                  <span className="font-semibold text-stone-300">Turn-by-Turn Waypoints:</span>
-                  <span className="text-[10px] text-rose-300 bg-rose-500/10 px-2 py-0.5 rounded-full border border-rose-500/20 font-medium">
+                <div className="mb-2 flex items-center justify-between text-[11px] text-slate-300">
+                  <span className="font-semibold text-white">Turn-by-Turn Waypoints:</span>
+                  <span className="text-[10px] text-sky-300 bg-sky-500/10 px-2 py-0.5 rounded-full border border-sky-500/20 font-medium">
                     Tap step to focus route map
                   </span>
                 </div>
@@ -1252,16 +1252,16 @@ export default function HomePage() {
                       onClick={() => setHighlightedStepIndex(i)}
                       className={`p-2.5 rounded-2xl border transition-all cursor-pointer flex items-start gap-2.5 ${
                         highlightedStepIndex === i
-                          ? "bg-rose-950/60 border-rose-500/80 text-white shadow-md ring-1 ring-rose-500/40"
-                          : "bg-white/5 border-white/10 hover:bg-white/10 text-stone-300"
+                          ? "bg-sky-950/60 border-sky-400/80 text-white shadow-md ring-1 ring-sky-500/40"
+                          : "bg-white/5 border-white/10 hover:bg-white/10 text-slate-300"
                       }`}
                     >
-                      <div className="w-5 h-5 rounded-full bg-rose-500/20 text-rose-300 border border-rose-500/40 flex items-center justify-center text-[10px] font-bold shrink-0">
+                      <div className="w-5 h-5 rounded-full bg-sky-500/20 text-sky-300 border border-sky-500/40 flex items-center justify-center text-[10px] font-bold shrink-0">
                         {st.step_number}
                       </div>
                       <div className="flex-1 min-w-0">
                         <p className="text-xs font-semibold">{st.instruction}</p>
-                        <p className="text-[10px] text-stone-400 mt-0.5">
+                        <p className="text-[10px] text-slate-400 mt-0.5">
                           {st.mode} &bull; {st.duration_min} mins {st.distance_km > 0 && `&bull; ${st.distance_km} km`}
                         </p>
                       </div>
@@ -1278,9 +1278,9 @@ export default function HomePage() {
                   setBookingJourney(selectedOption);
                   setIsBookingOpen(true);
                 }}
-                className="w-full mt-4 py-2.5 rounded-full bg-gradient-to-r from-rose-600 via-pink-600 to-amber-600 hover:from-rose-500 hover:to-amber-500 text-white font-bold text-xs tracking-wider uppercase shadow-lg shadow-rose-950/50 hover:scale-[1.02] active:scale-95 transition-all flex items-center justify-center gap-2 cursor-pointer"
+                className="w-full mt-4 py-3 rounded-full bg-white hover:bg-slate-100 text-slate-900 font-extrabold text-xs tracking-wider uppercase shadow-xl hover:scale-[1.02] active:scale-95 transition-all flex items-center justify-center gap-2 cursor-pointer"
               >
-                <Ticket className="w-4 h-4 text-white" />
+                <Ticket className="w-4 h-4 text-slate-900" />
                 <span>Book Bus &amp; Train E-Ticket &bull; Pay via QR Code</span>
               </button>
             )}

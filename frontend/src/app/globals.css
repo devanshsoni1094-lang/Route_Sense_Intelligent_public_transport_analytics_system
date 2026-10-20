@@ -6,54 +6,56 @@
 
 :root {
   --font-sans: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-  --vision-glass-bg: rgba(34, 30, 29, 0.78);
-  --vision-glass-border: rgba(255, 255, 255, 0.14);
+  --vision-glass-bg: rgba(15, 23, 42, 0.70);
+  --vision-glass-border: rgba(255, 255, 255, 0.18);
 }
 
 body {
   font-family: var(--font-sans);
-  background-color: #141110;
-  color: #f5f5f4;
+  background-color: #0b1329;
+  color: #f8fafc;
   overflow-x: hidden;
   background-image: 
-    radial-gradient(circle at 85% 15%, rgba(251, 146, 60, 0.15), transparent 40%),
-    radial-gradient(circle at 15% 85%, rgba(244, 63, 94, 0.12), transparent 45%),
-    radial-gradient(circle at 50% 50%, rgba(41, 37, 36, 0.4), transparent 60%);
+    linear-gradient(to bottom, rgba(11, 19, 41, 0.45), rgba(11, 19, 41, 0.82)),
+    url('/images/voyavera-bg.jpg');
+  background-size: cover;
+  background-position: center top;
+  background-repeat: no-repeat;
   background-attachment: fixed;
 }
 
-/* VisionOS Glass Surface Utility */
+/* VisionOS / Voyavera Glass Surface Utility */
 .vision-glass-surface {
-  background: rgba(34, 30, 29, 0.76);
-  backdrop-filter: blur(40px) saturate(180%);
-  -webkit-backdrop-filter: blur(40px) saturate(180%);
-  border: 1px solid rgba(255, 255, 255, 0.13);
-  box-shadow: 0 30px 80px -10px rgba(0, 0, 0, 0.7), 0 0 1px 1px rgba(255, 255, 255, 0.1) inset;
+  background: rgba(15, 23, 42, 0.65);
+  backdrop-filter: blur(40px) saturate(190%);
+  -webkit-backdrop-filter: blur(40px) saturate(190%);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  box-shadow: 0 30px 80px -10px rgba(0, 0, 0, 0.65), 0 0 1px 1px rgba(255, 255, 255, 0.12) inset;
 }
 
 .vision-card {
-  background: rgba(255, 255, 255, 0.05);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3), 0 0 1px 1px rgba(255, 255, 255, 0.06) inset;
+  background: rgba(15, 23, 42, 0.55);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.35), 0 0 1px 1px rgba(255, 255, 255, 0.08) inset;
 }
 
 .vision-card:hover {
-  background: rgba(255, 255, 255, 0.08);
-  border-color: rgba(255, 255, 255, 0.18);
+  background: rgba(15, 23, 42, 0.72);
+  border-color: rgba(255, 255, 255, 0.25);
 }
 
 .vision-pill {
-  background: rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.12);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
-  border: 1px solid rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.18);
 }
 
 .vision-pill:hover {
-  background: rgba(255, 255, 255, 0.16);
-  border-color: rgba(255, 255, 255, 0.22);
+  background: rgba(255, 255, 255, 0.20);
+  border-color: rgba(255, 255, 255, 0.30);
 }
 
 /* Custom VisionOS Scrollbars */

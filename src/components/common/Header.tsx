@@ -66,24 +66,24 @@ export const Header: React.FC = () => {
   };
 
   return (
-    <header className="w-full px-6 py-4 flex items-center justify-between border-b border-white/10 text-stone-100 font-sans relative z-30">
+    <header className="w-full px-6 py-4 flex items-center justify-between border-b border-white/15 text-slate-100 font-sans relative z-30">
       {/* Brand: Logo & Tagline */}
       <Link href="/" className="flex items-center gap-3 group">
-        <div className="w-9 h-9 rounded-full bg-gradient-to-tr from-orange-500 via-rose-500 to-amber-400 p-[1.5px] shadow-lg shadow-orange-950/40 group-hover:scale-105 transition-transform duration-300">
-          <div className="w-full h-full rounded-full bg-[#201c1a] flex items-center justify-center">
-            <Compass className="w-4 h-4 text-orange-400 transform group-hover:rotate-45 transition-transform duration-500" />
+        <div className="w-9 h-9 rounded-full bg-gradient-to-tr from-sky-400 via-teal-400 to-emerald-400 p-[1.5px] shadow-lg shadow-sky-950/40 group-hover:scale-105 transition-transform duration-300">
+          <div className="w-full h-full rounded-full bg-slate-950 flex items-center justify-center">
+            <Compass className="w-4 h-4 text-sky-300 transform group-hover:rotate-45 transition-transform duration-500" />
           </div>
         </div>
         <div>
           <div className="flex items-center gap-2">
-            <h1 className="text-sm sm:text-base font-extrabold tracking-tight text-white group-hover:text-rose-300 transition-colors">
+            <h1 className="text-sm sm:text-base font-extrabold tracking-tight text-white group-hover:text-sky-200 transition-colors">
               ROUTE SENSE
             </h1>
-            <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-rose-500/20 text-rose-300 border border-rose-500/30 hidden sm:inline-block">
+            <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-sky-500/20 text-sky-200 border border-sky-500/30 hidden sm:inline-block">
               Mumbai MMR
             </span>
           </div>
-          <p className="text-[11px] text-stone-400 font-medium tracking-tight">
+          <p className="text-[11px] text-slate-300 font-medium tracking-tight">
             Mumbai Metropolitan Region &bull; Smart Transit
           </p>
         </div>
@@ -91,8 +91,8 @@ export const Header: React.FC = () => {
 
       {/* Center Search Pill & Filter */}
       <div className="hidden md:flex items-center gap-2">
-        <div className="flex items-center gap-2.5 px-4 py-2 rounded-full bg-white/10 hover:bg-white/15 border border-white/10 text-xs text-stone-200 w-72 lg:w-80 shadow-inner transition-colors">
-          <Search className="w-3.5 h-3.5 text-stone-400 shrink-0" />
+        <div className="flex items-center gap-2.5 px-4 py-2 rounded-full bg-white/10 hover:bg-white/15 border border-white/15 text-xs text-slate-200 w-72 lg:w-80 shadow-inner transition-colors">
+          <Search className="w-3.5 h-3.5 text-slate-400 shrink-0" />
           <input
             type="text"
             readOnly
@@ -101,15 +101,15 @@ export const Header: React.FC = () => {
               const el = document.getElementById("source-input");
               if (el) el.focus();
             }}
-            className="bg-transparent border-none outline-none w-full text-xs text-stone-200 placeholder-stone-400 cursor-pointer"
+            className="bg-transparent border-none outline-none w-full text-xs text-slate-200 placeholder-slate-400 cursor-pointer"
           />
         </div>
 
         <Link
           href="/verify"
-          className="px-3.5 py-2 rounded-full bg-white/10 hover:bg-white/15 border border-white/10 text-xs text-stone-300 font-medium flex items-center gap-1.5 transition-colors cursor-pointer shadow-sm"
+          className="px-3.5 py-2 rounded-full bg-white/10 hover:bg-white/15 border border-white/15 text-xs text-slate-200 font-medium flex items-center gap-1.5 transition-colors cursor-pointer shadow-sm"
         >
-          <QrCode className="w-3.5 h-3.5 text-rose-400" />
+          <QrCode className="w-3.5 h-3.5 text-sky-400" />
           <span>Verify Ticket</span>
         </Link>
       </div>
@@ -119,17 +119,17 @@ export const Header: React.FC = () => {
         {/* Quick Link to Ticket Booking Section */}
         <a
           href="#booking-section"
-          className="px-3.5 py-1.5 rounded-full bg-gradient-to-r from-rose-600 via-orange-500 to-amber-500 hover:from-rose-500 hover:to-amber-400 text-white font-extrabold text-xs flex items-center gap-1.5 shadow-md shadow-rose-950/50 hover:scale-105 active:scale-95 transition-all cursor-pointer"
+          className="px-4 py-2 rounded-full bg-white hover:bg-slate-100 text-slate-900 font-extrabold text-xs flex items-center gap-1.5 shadow-lg shadow-black/40 hover:scale-105 active:scale-95 transition-all cursor-pointer"
         >
-          <Sparkles className="w-3.5 h-3.5 text-amber-200" />
+          <Sparkles className="w-3.5 h-3.5 text-sky-600" />
           <span>Book Ticket (QR Pay)</span>
         </a>
 
         {/* Transit Connectivity Pill */}
-        <div className="hidden lg:flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/5 border border-white/10 text-[11px] text-stone-300">
+        <div className="hidden lg:flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/5 border border-white/10 text-[11px] text-slate-300">
           <span
             className={`w-2 h-2 rounded-full ${
-              providerStatus?.configured ? "bg-emerald-400" : "bg-amber-400"
+              providerStatus?.configured ? "bg-emerald-400" : "bg-sky-400"
             }`}
           />
           <span className="font-medium">
@@ -142,7 +142,7 @@ export const Header: React.FC = () => {
           <button
             type="button"
             onClick={() => openAuthModal("signin")}
-            className="px-3.5 py-1.5 rounded-full bg-white hover:bg-stone-100 text-stone-900 font-extrabold text-xs flex items-center gap-2 shadow-md hover:scale-105 active:scale-95 transition-all cursor-pointer"
+            className="px-3.5 py-1.5 rounded-full bg-white/10 hover:bg-white/20 border border-white/20 text-white font-extrabold text-xs flex items-center gap-2 shadow-md hover:scale-105 active:scale-95 transition-all cursor-pointer"
           >
             {/* Google Multicolor 'G' Icon */}
             <svg className="w-3.5 h-3.5 shrink-0" viewBox="0 0 24 24">
@@ -172,21 +172,21 @@ export const Header: React.FC = () => {
               onClick={() => setDropdownOpen(!dropdownOpen)}
               className="flex items-center gap-2 p-1 rounded-full bg-white/5 hover:bg-white/10 border border-white/10 transition-colors cursor-pointer group"
             >
-              <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-rose-500 via-orange-500 to-amber-400 p-[1.5px] shadow-md group-hover:scale-105 transition-transform">
-                <div className="w-full h-full rounded-full bg-[#241f1d] flex items-center justify-center text-[11px] font-bold text-rose-200">
+              <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-sky-400 via-teal-400 to-emerald-400 p-[1.5px] shadow-md group-hover:scale-105 transition-transform">
+                <div className="w-full h-full rounded-full bg-slate-900 flex items-center justify-center text-[11px] font-bold text-sky-200">
                   {getInitials(user?.name, user?.email)}
                 </div>
               </div>
-              <ChevronDown className="w-3 h-3 text-stone-400 mr-1 hidden sm:block" />
+              <ChevronDown className="w-3 h-3 text-slate-400 mr-1 hidden sm:block" />
             </button>
 
             {/* Dropdown Menu */}
             {dropdownOpen && (
-              <div className="absolute right-0 mt-2 w-64 rounded-2xl bg-stone-900 border border-white/15 p-3 shadow-2xl animate-fade-in text-xs z-50">
+              <div className="absolute right-0 mt-2 w-64 rounded-2xl bg-slate-900/95 backdrop-blur-2xl border border-white/20 p-3 shadow-2xl animate-fade-in text-xs z-50">
                 {/* User Info Header */}
                 <div className="pb-3 border-b border-white/10">
                   <p className="font-extrabold text-white text-sm truncate">{user?.name}</p>
-                  <p className="text-[11px] text-stone-400 truncate">{user?.email}</p>
+                  <p className="text-[11px] text-slate-300 truncate">{user?.email}</p>
                   <div className="mt-1.5 flex items-center gap-1.5">
                     <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
                     <span className="text-[10px] font-mono uppercase px-2 py-0.5 rounded-full bg-emerald-500/15 border border-emerald-500/30 text-emerald-300 font-bold">
@@ -200,16 +200,16 @@ export const Header: React.FC = () => {
                   <a
                     href="#booking-section"
                     onClick={() => setDropdownOpen(false)}
-                    className="flex items-center gap-2 px-2.5 py-2 rounded-xl text-stone-300 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
+                    className="flex items-center gap-2 px-2.5 py-2 rounded-xl text-slate-200 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
                   >
-                    <Ticket className="w-3.5 h-3.5 text-rose-400" />
+                    <Ticket className="w-3.5 h-3.5 text-sky-400" />
                     <span>My Booked Passes</span>
                   </a>
 
                   <Link
                     href="/verify"
                     onClick={() => setDropdownOpen(false)}
-                    className="flex items-center gap-2 px-2.5 py-2 rounded-xl text-stone-300 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
+                    className="flex items-center gap-2 px-2.5 py-2 rounded-xl text-slate-200 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
                   >
                     <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
                     <span>Ticket Validator Portal</span>
