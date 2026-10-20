@@ -127,7 +127,7 @@ export const TravelHeroSpotlight: React.FC<TravelHeroSpotlightProps> = ({
       <div className="relative z-10 flex flex-col lg:flex-row lg:items-start justify-between gap-6">
         
         {/* Left Column: Heading, Subtitle & Action Buttons */}
-        <div className="max-w-xl">
+        <div className="flex-1 min-w-0 max-w-2xl xl:max-w-3xl">
           {/* Tag Pill: EXPLORE • DISCOVER • COMMUTE */}
           <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-white/10 backdrop-blur-md border border-white/20 text-[11px] font-bold uppercase tracking-[0.22em] text-sky-200 mb-4 shadow-sm">
             <Compass className="w-3.5 h-3.5 text-sky-400" />
@@ -135,7 +135,7 @@ export const TravelHeroSpotlight: React.FC<TravelHeroSpotlightProps> = ({
           </div>
 
           {/* Grand Voyavera Headline */}
-          <h2 className="text-3xl sm:text-5xl font-extrabold tracking-tight text-white leading-[1.08] drop-shadow-sm font-sans">
+          <h2 className="text-3xl sm:text-5xl lg:text-5xl xl:text-6xl font-extrabold tracking-tight text-white leading-[1.08] drop-shadow-sm font-sans">
             The Metropolis <br />
             <span className="text-transparent bg-clip-text bg-gradient-to-r from-white via-sky-100 to-sky-300">
               Awaits You
@@ -178,9 +178,9 @@ export const TravelHeroSpotlight: React.FC<TravelHeroSpotlightProps> = ({
         </div>
 
         {/* Right Floating Preview Card (Matches the floating Switzerland card in Voyavera) */}
-        <div className="hidden sm:flex flex-col rounded-3xl vision-card p-3.5 bg-slate-900/50 backdrop-blur-2xl border border-white/20 shadow-2xl w-64 shrink-0 hover:scale-[1.02] transition-transform">
+        <div className="hidden sm:flex flex-col rounded-3xl vision-card p-3.5 bg-slate-900/50 backdrop-blur-2xl border border-white/20 shadow-2xl w-64 xl:w-72 2xl:w-80 shrink-0 hover:scale-[1.02] transition-transform">
           {/* Card Image Banner */}
-          <div className="w-full h-28 rounded-2xl overflow-hidden relative bg-gradient-to-tr from-sky-900 via-indigo-900 to-emerald-800">
+          <div className="w-full h-28 xl:h-32 rounded-2xl overflow-hidden relative bg-gradient-to-tr from-sky-900 via-indigo-900 to-emerald-800">
             <div
               className="absolute inset-0 bg-cover bg-center opacity-85"
               style={{ backgroundImage: "url('/images/voyavera-bg.jpg')" }}

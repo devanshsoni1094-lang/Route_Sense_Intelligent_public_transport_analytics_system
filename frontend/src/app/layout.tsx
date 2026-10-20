@@ -31,13 +31,13 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" className="dark">
-      <body className="min-h-screen text-slate-100 flex flex-col items-center justify-start p-2 sm:p-4 md:p-6 lg:p-8 font-sans antialiased selection:bg-sky-500/30 selection:text-sky-200">
+      <body className="min-h-screen text-slate-100 flex flex-col items-center justify-start p-1.5 sm:p-2.5 md:p-3 lg:p-4 font-sans antialiased selection:bg-sky-500/30 selection:text-sky-200 w-full overflow-x-hidden">
         <ClientProviders>
-        {/* SPATIAL WORKSPACE WRAPPER (Window + Left Vertical Dock) */}
-        <div className="w-full max-w-6xl relative flex items-start gap-4">
+        {/* FULL 16:9 WIDESCREEN WORKSPACE WRAPPER */}
+        <div className="w-full max-w-[1920px] 2xl:max-w-full relative flex items-start gap-3 sm:gap-4 mx-auto px-1 sm:px-2">
           
           {/* LEFT FLOATING VERTICAL DOCK (Clean, Minimal, 100% Functional) */}
-          <aside className="hidden md:flex flex-col items-center gap-3 p-2 rounded-full bg-slate-900/60 backdrop-blur-3xl border border-white/20 shadow-2xl shrink-0 sticky top-12 z-30">
+          <aside className="hidden md:flex flex-col items-center gap-3 p-2 rounded-full bg-slate-900/60 backdrop-blur-3xl border border-white/20 shadow-2xl shrink-0 sticky top-6 z-30">
             {/* Active Home Button */}
             <a
               href="/"
@@ -51,7 +51,7 @@ export default function RootLayout({
             <a
               href="#journey-planner"
               title="Search Corridors & Fares"
-              className="w-9 h-9 rounded-full hover:bg-white/10 text-stone-400 hover:text-white flex items-center justify-center transition-all cursor-pointer"
+              className="w-9 h-9 rounded-full hover:bg-white/10 text-slate-400 hover:text-white flex items-center justify-center transition-all cursor-pointer"
             >
               <Compass className="w-4 h-4" />
             </a>
@@ -60,7 +60,7 @@ export default function RootLayout({
             <a
               href="#booking-section"
               title="Book Bus & Train E-Ticket (QR Pay)"
-              className="w-9 h-9 rounded-full hover:bg-white/10 text-stone-400 hover:text-white flex items-center justify-center transition-all cursor-pointer"
+              className="w-9 h-9 rounded-full hover:bg-white/10 text-slate-400 hover:text-white flex items-center justify-center transition-all cursor-pointer"
             >
               <Ticket className="w-4 h-4" />
             </a>
@@ -69,24 +69,24 @@ export default function RootLayout({
             <a
               href="/verify"
               title="Ticket Verification Portal"
-              className="w-9 h-9 rounded-full hover:bg-white/10 text-stone-400 hover:text-white flex items-center justify-center transition-all cursor-pointer"
+              className="w-9 h-9 rounded-full hover:bg-white/10 text-slate-400 hover:text-white flex items-center justify-center transition-all cursor-pointer"
             >
               <Lock className="w-4 h-4" />
             </a>
           </aside>
 
-          {/* MAIN FLOATING SPATIAL GLASS WINDOW */}
-          <main className="flex-1 w-full rounded-[32px] sm:rounded-[36px] vision-glass-surface overflow-hidden flex flex-col shadow-vision-window relative z-20">
+          {/* MAIN FLOATING SPATIAL GLASS WINDOW (Full 16:9 Widescreen Canvas) */}
+          <main className="flex-1 w-full rounded-[28px] sm:rounded-[36px] vision-glass-surface overflow-hidden flex flex-col shadow-vision-window relative z-20 min-h-[96vh]">
             {/* Window Internal Header */}
             <Header />
 
             {/* Main Page Canvas */}
-            <div className="flex-1 w-full p-4 sm:p-6 lg:p-8">
+            <div className="flex-1 w-full p-3 sm:p-5 md:p-6 lg:p-8 xl:p-10 2xl:p-12">
               {children}
             </div>
 
             {/* Window Internal Subtle Footer */}
-            <footer className="px-6 py-4 border-t border-white/10 bg-black/20 flex flex-col sm:flex-row items-center justify-between text-[11px] text-stone-400 gap-2">
+            <footer className="px-6 py-4 border-t border-white/10 bg-black/20 flex flex-col sm:flex-row items-center justify-between text-[11px] text-slate-400 gap-2">
               <p className="font-medium">
                 Route Sense &bull; Mumbai Metropolitan Region (MMR) Smart Public Transit
               </p>

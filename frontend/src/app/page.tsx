@@ -975,21 +975,21 @@ export default function HomePage() {
             <p className="text-xs font-medium">Computing live Mumbai suburban tariffs & traffic corridors...</p>
           </div>
         ) : sortedAndFilteredOptions.length > 0 ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-4">
             {sortedAndFilteredOptions.map((opt, idx) => {
               const isSelected = selectedOption?.journey_id === opt.journey_id;
               const mode = opt.transport_mode || opt.mode;
 
               // Color accents per Mumbai mode
               const gradientMap: Record<string, string> = {
-                TRAIN: "from-rose-950/80 via-purple-950/60 to-stone-900",
-                METRO: "from-purple-950/80 via-indigo-950/60 to-stone-900",
-                BUS: "from-orange-950/80 via-amber-950/60 to-stone-900",
-                CAB: "from-amber-950/80 via-yellow-950/60 to-stone-900",
-                AUTO: "from-yellow-950/80 via-orange-950/60 to-stone-900",
-                BIKE: "from-emerald-950/80 via-teal-950/60 to-stone-900",
-                CAR_PERSONAL: "from-rose-950/80 via-stone-900 to-stone-900",
-                MOTORCYCLE_PERSONAL: "from-orange-950/80 via-stone-900 to-stone-900"
+                TRAIN: "from-sky-950/80 via-blue-950/60 to-slate-900",
+                METRO: "from-indigo-950/80 via-purple-950/60 to-slate-900",
+                BUS: "from-teal-950/80 via-emerald-950/60 to-slate-900",
+                CAB: "from-slate-900 via-sky-950/60 to-slate-900",
+                AUTO: "from-amber-950/80 via-yellow-950/60 to-slate-900",
+                BIKE: "from-emerald-950/80 via-teal-950/60 to-slate-900",
+                CAR_PERSONAL: "from-slate-900 via-indigo-950/60 to-slate-900",
+                MOTORCYCLE_PERSONAL: "from-slate-900 via-sky-950/60 to-slate-900"
               };
 
               return (
@@ -998,7 +998,7 @@ export default function HomePage() {
                   onClick={() => setSelectedOption(opt)}
                   className={`rounded-[24px] vision-card p-3.5 flex flex-col justify-between transition-all cursor-pointer relative group ${
                     isSelected
-                      ? "ring-2 ring-rose-500/80 shadow-2xl bg-white/10 scale-[1.02]"
+                      ? "ring-2 ring-sky-400 shadow-2xl bg-white/15 scale-[1.02]"
                       : "hover:scale-[1.01] hover:bg-white/8"
                   }`}
                 >
@@ -1128,7 +1128,7 @@ export default function HomePage() {
           <div>
             <div className="flex items-center justify-between mb-3">
               <div>
-                <span className="text-[10px] font-bold text-rose-400 uppercase tracking-wider">
+                <span className="text-[10px] font-bold text-sky-400 uppercase tracking-wider">
                   Active Mumbai Corridor
                 </span>
                 <h4 className="text-sm font-black text-white">
@@ -1293,7 +1293,7 @@ export default function HomePage() {
         </div>
 
         {/* Right Spatial Map Canvas */}
-        <div className="lg:col-span-7 h-[460px] lg:h-auto min-h-[460px] rounded-[28px] overflow-hidden shadow-2xl">
+        <div className="lg:col-span-7 h-[500px] lg:h-auto min-h-[500px] xl:min-h-[560px] rounded-[28px] overflow-hidden shadow-2xl">
           <InteractiveMap
             origin={sourceLoc}
             destination={destLoc}
