@@ -2,6 +2,7 @@ import React from "react";
 import "./globals.css";
 import { Header } from "@/components/common/Header";
 import { ClientProviders } from "@/components/providers/ClientProviders";
+import { RouteSenseAssistantChat } from "@/components/chat/RouteSenseAssistantChat";
 import {
   Home,
   Compass,
@@ -17,7 +18,9 @@ import {
   Plus,
   LayoutGrid,
   Lock,
-  Sidebar
+  Sidebar,
+  User,
+  CloudRain
 } from "lucide-react";
 
 export const metadata = {
@@ -74,6 +77,24 @@ export default function RootLayout({
             >
               <Navigation className="w-4 h-4" />
             </a>
+
+            {/* Disruption & Monsoon Intelligence */}
+            <a
+              href="/disruptions"
+              title="Disruption & Monsoon Intelligence"
+              className="w-9 h-9 rounded-full hover:bg-white/10 text-slate-400 hover:text-white flex items-center justify-center transition-all cursor-pointer"
+            >
+              <CloudRain className="w-4 h-4" />
+            </a>
+
+            {/* Personal Commute Dashboard */}
+            <a
+              href="/dashboard"
+              title="Personal Commute Dashboard"
+              className="w-9 h-9 rounded-full hover:bg-white/10 text-slate-400 hover:text-white flex items-center justify-center transition-all cursor-pointer"
+            >
+              <User className="w-4 h-4" />
+            </a>
           </aside>
 
           {/* MAIN FLOATING SPATIAL GLASS WINDOW (Full 16:9 Widescreen Canvas) */}
@@ -101,6 +122,9 @@ export default function RootLayout({
             </footer>
           </main>
         </div>
+        
+        {/* Floating Conversational AI Assistant */}
+        <RouteSenseAssistantChat />
         </ClientProviders>
       </body>
     </html>

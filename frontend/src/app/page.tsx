@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import dynamic from "next/dynamic";
 import {
   Bus,
   Train,
@@ -38,6 +39,19 @@ import { fetchApi } from "@/lib/api";
 import { LocationAutocomplete } from "@/components/common/LocationAutocomplete";
 import { JourneyFiveParameterAnalysis } from "@/components/analytics/JourneyFiveParameterAnalysis";
 import { TravelHeroSpotlight } from "@/components/home/TravelHeroSpotlight";
+
+const InteractiveMap = dynamic(
+  () => import("@/components/common/InteractiveMap").then((mod) => mod.InteractiveMap),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="w-full h-[400px] rounded-[28px] bg-stone-900/60 border border-white/10 flex flex-col items-center justify-center gap-2 text-stone-400">
+        <Loader2 className="w-6 h-6 animate-spin text-sky-400" />
+        <span className="text-xs">Rendering Mumbai Planned Transit Map...</span>
+      </div>
+    )
+  }
+);
 
 // Iconic Mumbai Metropolitan Region (MMR) Commuter Corridors
 const POPULAR_MUMBAI_CORRIDORS = [
@@ -1231,6 +1245,22 @@ export default function HomePage() {
               <span>{selectedOption?.co2_emissions_g ?? 50}g CO₂</span>
             </span>
           </div>
+        </div>
+
+        {/* Planned Route Map Canvas */}
+        <div className="mb-6 rounded-[28px] overflow-hidden border border-white/10 shadow-2xl h-[420px] w-full">
+          <InteractiveMap
+            origin={sourceLoc}
+            destination={destLoc}
+            selectedMode={selectedOption?.mode || "BUS"}
+            journeyTitle={selectedOption?.title || `${sourceText || "Origin"} ➔ ${destText || "Destination"}`}
+            distanceKm={selectedOption?.route_distance_km ?? selectedOption?.distance_km}
+            durationMin={selectedOption?.total_duration_minutes ?? selectedOption?.duration_min}
+            coordinates={selectedOption?.coordinates}
+            steps={selectedOption?.steps}
+            highlightedStepIndex={highlightedStepIndex}
+            onSelectStep={(idx) => setHighlightedStepIndex(idx)}
+          />
         </div>
 
         {/* Turn-by-Turn Waypoints Grid */}

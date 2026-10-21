@@ -11,7 +11,8 @@ import {
   User,
   LogOut,
   ExternalLink,
-  BarChart2
+  BarChart2,
+  CloudRain
 } from "lucide-react";
 import { fetchApi } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
@@ -195,6 +196,24 @@ export const Header: React.FC = () => {
 
                 {/* Menu Links */}
                 <div className="py-2 space-y-1">
+                  <Link
+                    href="/dashboard"
+                    onClick={() => setDropdownOpen(false)}
+                    className="flex items-center gap-2 px-2.5 py-2 rounded-xl text-slate-200 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
+                  >
+                    <User className="w-3.5 h-3.5 text-emerald-400" />
+                    <span>My Commute Dashboard</span>
+                  </Link>
+
+                  <Link
+                    href="/disruptions"
+                    onClick={() => setDropdownOpen(false)}
+                    className="flex items-center gap-2 px-2.5 py-2 rounded-xl text-slate-200 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
+                  >
+                    <CloudRain className="w-3.5 h-3.5 text-rose-400" />
+                    <span>Disruptions &amp; Monsoon Alerts</span>
+                  </Link>
+
                   <a
                     href="#journey-analysis"
                     onClick={() => setDropdownOpen(false)}
@@ -209,7 +228,7 @@ export const Header: React.FC = () => {
                     onClick={() => setDropdownOpen(false)}
                     className="flex items-center gap-2 px-2.5 py-2 rounded-xl text-slate-200 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
                   >
-                    <Compass className="w-3.5 h-3.5 text-emerald-400" />
+                    <Compass className="w-3.5 h-3.5 text-cyan-400" />
                     <span>Corridor Waypoints</span>
                   </a>
                 </div>

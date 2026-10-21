@@ -29,7 +29,7 @@ export const AuthModal: React.FC = () => {
     isLoading
   } = useAuth();
 
-  const [mode, setMode] = useState<"signin" | "signup">(authModalMode);
+  const [mode, setMode] = useState<"signin" | "signup" | "forgot">(authModalMode);
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -67,12 +67,7 @@ export const AuthModal: React.FC = () => {
     setError(null);
     setSubmitting(true);
     try {
-      await loginWithGoogle({
-        email: email && email.includes("@") ? email : "devansh.soni@gmail.com",
-        name: name || "Devansh R. Soni",
-        avatarUrl: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=120&auto=format&fit=crop&q=80",
-        googleId: "google_direct_auth_2026"
-      });
+      await loginWithGoogle();
     } catch (err: any) {
       setError(err?.message || "Google sign in failed.");
     } finally {
