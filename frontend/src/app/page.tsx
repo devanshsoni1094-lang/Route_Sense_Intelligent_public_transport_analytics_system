@@ -411,25 +411,88 @@ export default function HomePage() {
       if (filter === "CHEAPEST") {
         const priceA = a.quoted_price_inr ?? a.fare_inr ?? 9999;
         const priceB = b.quoted_price_inr ?? b.fare_inr ?? 9999;
-        return priceA - priceB;
+        if (priceA !== priceB) return priceA - priceB;
+        const durA = a.neural_duration_min ?? a.total_duration_minutes ?? a.duration_min ?? 999;
+        const durB = b.neural_duration_min ?? b.total_duration_minutes ?? b.duration_min ?? 999;
+        return durA - durB;
       }
       if (filter === "COMFORT") {
         const scoreA = a.comfort_score ?? 60;
         const scoreB = b.comfort_score ?? 60;
-        return scoreB - scoreA;
+        if (scoreA !== scoreB) return scoreB - scoreA;
+        const transfersA = a.transfers ?? 0;
+        const transfersB = b.transfers ?? 0;
+        if (transfersA !== transfersB) return transfersA - transfersB;
+        const durA = a.neural_duration_min ?? a.total_duration_minutes ?? a.duration_min ?? 999;
+        const durB = b.neural_duration_min ?? b.total_duration_minutes ?? b.duration_min ?? 999;
+        return durA - durB;
       }
       // Default: SPEED (Fastest travel time using neural duration if available)
       const durA = a.neural_duration_min ?? a.total_duration_minutes ?? a.duration_min ?? 999;
       const durB = b.neural_duration_min ?? b.total_duration_minutes ?? b.duration_min ?? 999;
-      return durA - durB;
+      if (durA !== durB) return durA - durB;
+      const scoreA = a.comfort_score ?? 60;
+      const scoreB = b.comfort_score ?? 60;
+      return scoreB - scoreA;
     });
+  };
+
+  // Helper to get strictly the TOP 5 BEST alternatives for each filter and remove the rest
+  const getTopFiveBestOptions = (
+    options: MultiModalOption[],
+    filter: "SPEED" | "CHEAPEST" | "COMFORT",
+    category: string
+  ): MultiModalOption[] => {
+    const sorted = sortJourneyOptions(options, filter);
+
+    if (category !== "ALL") {
+      // For specific transport modes (e.g. Local Train, Metro, BEST Bus, Cabs):
+      // Return the top 5 best alternatives within this mode
+      return sorted.slice(0, 5);
+    }
+
+    // For "ALL" modes: Select top 5 best diverse multimodal choices
+    // Prevents redundant duplicates (e.g. multiple identical bike taxis or personal fuel cars)
+    const seenModalities = new Set<string>();
+    const topDiverse: MultiModalOption[] = [];
+    const remaining: MultiModalOption[] = [];
+
+    const getModalityKey = (opt: MultiModalOption) => {
+      const id = (opt.journey_id || "").toUpperCase();
+      const mode = opt.transport_mode || opt.mode;
+      if (id.includes("METRO") || mode === "METRO") return "METRO";
+      if (id.includes("LOCAL") || mode === "TRAIN") return id.includes("1ST") ? "TRAIN_FIRST" : "TRAIN_SECOND";
+      if (id.includes("BEST") || mode === "BUS") return "BUS";
+      if (id.includes("AUTO") || mode === "AUTO") return "AUTO";
+      if (id.includes("CAB") || id.includes("UBER") || id.includes("OLA") || id.includes("TAXI") || mode === "CAB") return "CAB";
+      if (id.includes("BIKE") && !id.includes("PERSONAL")) return "BIKE_TAXI";
+      if (id.includes("PERSONAL")) return "PERSONAL";
+      return mode || "OTHER";
+    };
+
+    for (const opt of sorted) {
+      const key = getModalityKey(opt);
+      if (!seenModalities.has(key) && topDiverse.length < 5) {
+        seenModalities.add(key);
+        topDiverse.push(opt);
+      } else {
+        remaining.push(opt);
+      }
+    }
+
+    // If fewer than 5 distinct modalities, backfill with remaining best alternatives
+    while (topDiverse.length < 5 && remaining.length > 0) {
+      topDiverse.push(remaining.shift()!);
+    }
+
+    return topDiverse.slice(0, 5);
   };
 
   const handleSmartFilterChange = (filter: "SPEED" | "CHEAPEST" | "COMFORT") => {
     setSmartFilter(filter);
-    const reSorted = sortJourneyOptions(filteredOptions, filter);
-    if (reSorted.length > 0) {
-      setSelectedOption(reSorted[0]);
+    const newTop = getTopFiveBestOptions(filteredOptions, filter, activeCategory);
+    if (newTop.length > 0) {
+      setSelectedOption(newTop[0]);
     }
   };
 
@@ -626,10 +689,22 @@ export default function HomePage() {
     return true;
   });
 
-  // Apply Smart Filters sorting (SPEED, CHEAPEST, COMFORT)
-  const sortedAndFilteredOptions = sortJourneyOptions(filteredOptions, smartFilter);
+  // Apply Smart Filters sorting and keep strictly the TOP 5 BEST alternatives
+  const sortedAndFilteredOptions = getTopFiveBestOptions(filteredOptions, smartFilter, activeCategory);
 
   const recommendedOption = sortedAndFilteredOptions.find((o) => o.recommended) || sortedAndFilteredOptions[0] || routeOptions[0];
+
+  // Ensure selected option is valid within the top 5 alternatives
+  useEffect(() => {
+    if (sortedAndFilteredOptions.length > 0) {
+      const exists = sortedAndFilteredOptions.some(
+        (o) => o.journey_id === selectedOption?.journey_id
+      );
+      if (!exists) {
+        setSelectedOption(sortedAndFilteredOptions[0]);
+      }
+    }
+  }, [sortedAndFilteredOptions, selectedOption]);
 
   return (
     <div className="w-full flex flex-col gap-6 font-sans animate-in fade-in duration-500">
@@ -873,8 +948,8 @@ export default function HomePage() {
         <div className="flex items-center justify-between mb-3">
           <h3 className="text-base sm:text-lg font-bold text-white flex items-center gap-2">
             <span>Available Mumbai Transit Corridors</span>
-            <span className="px-2 py-0.5 rounded-full bg-sky-500/20 text-sky-300 border border-sky-500/30 text-xs font-semibold">
-              {sortedAndFilteredOptions.length} Verified Options
+            <span className="px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 text-xs font-black tracking-wide">
+              Top {sortedAndFilteredOptions.length} Best Alternatives
             </span>
           </h3>
 
@@ -903,7 +978,7 @@ export default function HomePage() {
                 </span>
               </h4>
               <p className="text-[11px] text-stone-300">
-                Prioritize routes by highest comfort, maximum speed, or lowest fare.
+                Top 5 best routes strictly filtered by maximum speed, lowest fare, or highest comfort.
               </p>
             </div>
           </div>
@@ -976,7 +1051,7 @@ export default function HomePage() {
             <p className="text-xs font-medium">Computing live Mumbai suburban tariffs & traffic corridors...</p>
           </div>
         ) : sortedAndFilteredOptions.length > 0 ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
             {sortedAndFilteredOptions.map((opt, idx) => {
               const isSelected = selectedOption?.journey_id === opt.journey_id;
               const mode = opt.transport_mode || opt.mode;
@@ -1026,11 +1101,16 @@ export default function HomePage() {
                           : "🚗 PERSONAL"}
                       </span>
 
-                      {opt.recommended && (
-                        <span className="text-[9px] font-black px-1.5 py-0.5 rounded-full bg-gradient-to-r from-sky-400 to-emerald-400 text-slate-950 shadow-sm">
-                          RECOMMENDED
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-[9px] font-black px-2 py-0.5 rounded-full bg-white/20 text-amber-300 border border-white/20 font-mono shadow-sm">
+                          #{idx + 1} Best
                         </span>
-                      )}
+                        {opt.recommended && (
+                          <span className="text-[9px] font-black px-1.5 py-0.5 rounded-full bg-gradient-to-r from-sky-400 to-emerald-400 text-slate-950 shadow-sm">
+                            RECOMMENDED
+                          </span>
+                        )}
+                      </div>
                     </div>
 
                     <div className="relative z-10 flex flex-col gap-1 mt-2">
