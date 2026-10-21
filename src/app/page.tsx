@@ -45,9 +45,9 @@ const InteractiveMap = dynamic(
   {
     ssr: false,
     loading: () => (
-      <div className="w-full h-[400px] rounded-[28px] bg-stone-900/60 border border-white/10 flex flex-col items-center justify-center gap-2 text-stone-400">
+      <div className="w-full h-[440px] rounded-[28px] bg-slate-900/60 border border-white/10 flex flex-col items-center justify-center gap-2 text-stone-400">
         <Loader2 className="w-6 h-6 animate-spin text-sky-400" />
-        <span className="text-xs">Rendering Mumbai Planned Transit Map...</span>
+        <span className="text-xs">Loading Live CARTO Mumbai Transit Map...</span>
       </div>
     )
   }
@@ -1327,8 +1327,8 @@ export default function HomePage() {
           </div>
         </div>
 
-        {/* Planned Route Map Canvas */}
-        <div className="mb-6 rounded-[28px] overflow-hidden border border-white/10 shadow-2xl h-[420px] w-full">
+        {/* Live Corridor Map Canvas */}
+        <div className="mb-6 rounded-[28px] overflow-hidden border border-white/10 shadow-2xl h-[440px] w-full">
           <InteractiveMap
             origin={sourceLoc}
             destination={destLoc}
@@ -1340,6 +1340,7 @@ export default function HomePage() {
             steps={selectedOption?.steps}
             highlightedStepIndex={highlightedStepIndex}
             onSelectStep={(idx) => setHighlightedStepIndex(idx)}
+            cartoApiKey="cb1_4jk9_1_bee4b9e4f372e1ce3f9056e0"
           />
         </div>
 
