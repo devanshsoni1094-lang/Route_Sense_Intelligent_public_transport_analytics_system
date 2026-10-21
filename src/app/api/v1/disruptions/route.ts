@@ -1,9 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { DisruptionService } from "@/lib/disruptions/disruptionService";
 
+export const dynamic = "force-dynamic";
+
 export async function GET(request: NextRequest) {
   try {
-    const { searchParams } = new URL(request.url);
+    const searchParams = request.nextUrl.searchParams;
     const mode = searchParams.get("mode") || undefined;
     const origin = searchParams.get("origin") || undefined;
     const destination = searchParams.get("destination") || undefined;

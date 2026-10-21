@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { UsersDatabase } from "@/lib/db/usersDb";
 import { TicketsDatabase, TicketRecord } from "@/lib/db/ticketsDb";
 
+export const dynamic = "force-dynamic";
+
 export async function GET(request: NextRequest) {
   try {
     const cookieToken = request.cookies.get("routesense_session")?.value;

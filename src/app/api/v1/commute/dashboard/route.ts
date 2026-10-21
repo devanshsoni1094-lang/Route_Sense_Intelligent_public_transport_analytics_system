@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { UsersDatabase } from "@/lib/db/usersDb";
 
+export const dynamic = "force-dynamic";
+
 export interface CommuteLogItem {
   id: string;
   userId: string;

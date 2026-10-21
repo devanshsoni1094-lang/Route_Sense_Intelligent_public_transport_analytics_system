@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { searchIndianLocations } from "@/lib/locationProvider";
 import { LocationAutocompleteQuerySchema } from "@/lib/schemas";
 
+export const dynamic = "force-dynamic";
+
 export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams;
   const q = searchParams.get("q") || "";
