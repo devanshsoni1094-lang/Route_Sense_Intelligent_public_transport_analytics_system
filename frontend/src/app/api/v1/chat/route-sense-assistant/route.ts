@@ -40,10 +40,16 @@ Rules:
 - Warn about active disruptions or peak hour rush (8:30-10:30 AM, 5:30-8:30 PM).
 `;
 
-async function callOpenAI(messages: any[], userPrompt: string): Promise<string | null> {
+interface OpenAiResult {
+  reply: string | null;
+  error?: string;
+  isQuotaExhausted?: boolean;
+}
+
+async function callOpenAI(messages: any[], userPrompt: string): Promise<OpenAiResult> {
   const apiKey = (process.env.OPENAI_API_KEY || "").trim();
   if (!apiKey || apiKey.includes("your-openai-api-key")) {
-    return null;
+    return { reply: null, error: "API_KEY_NOT_CONFIGURED" };
   }
 
   const payloadMessages: Array<{ role: string; content: string }> = [
@@ -87,27 +93,96 @@ async function callOpenAI(messages: any[], userPrompt: string): Promise<string |
 
     if (!res.ok) {
       const errData = await res.json().catch(() => ({}));
-      console.warn("OpenAI API response non-200:", res.status, errData?.error?.message || errData);
-      return null;
+      const errCode = errData?.error?.code || "";
+      const isQuota = errCode === "credit_balance_exhausted" || errData?.error?.type === "insufficient_quota";
+      console.warn("OpenAI API response status:", res.status, errData?.error?.message || errData);
+      return {
+        reply: null,
+        error: errData?.error?.message || `HTTP ${res.status}`,
+        isQuotaExhausted: isQuota
+      };
     }
 
     const data = await res.json();
     const reply = data.choices?.[0]?.message?.content;
-    return reply ? reply.trim() : null;
+    return { reply: reply ? reply.trim() : null };
   } catch (err: any) {
     clearTimeout(timeoutId);
     console.warn("OpenAI API call failed or timed out:", err?.message || err);
-    return null;
+    return { reply: null, error: err?.message || "TIMEOUT" };
   }
 }
 
-function getSmartFallbackReply(userPrompt: string): { reply: string; actions?: any[] } {
-  const p = userPrompt.toLowerCase();
+function parseOriginDestination(text: string): { origin: string; dest: string } | null {
+  const clean = text
+    .replace(/^(how to go|suggest route|best way|route|fastest way|cheapest way|travel)\s+/i, "")
+    .trim();
 
-  if (p.includes("mega block") || p.includes("block") || p.includes("disruption") || p.includes("delay")) {
-    const active = DisruptionService.getAllDisruptions();
+  const m1 = clean.match(/from\s+([a-zA-Z\s]+?)\s+(?:to|->|➔)\s+([a-zA-Z\s\?]+)/i);
+  if (m1) return { origin: m1[1].trim(), dest: m1[2].replace(/\?/g, "").trim() };
+
+  const m2 = clean.match(/^([a-zA-Z\s]+?)\s+(?:to|->|➔)\s+([a-zA-Z\s\?]+)/i);
+  if (m2) return { origin: m2[1].trim(), dest: m2[2].replace(/\?/g, "").trim() };
+
+  return null;
+}
+
+function getSmartFallbackReply(userPrompt: string): { reply: string; actions?: any[] } {
+  const p = userPrompt.toLowerCase().trim();
+
+  // 1. Greetings
+  if (/^(hi|hello|hey|namaste|good\s+morning|good\s+afternoon|good\s+evening|hola)\b/i.test(p) || p === "hi" || p === "hello") {
     return {
-      reply: `Here are the active MMR service advisories:\n\n1. **Central Railway Sunday Mega Block:** Matunga to Mulund Up & Down Fast lines (11:05 AM to 3:55 PM). Fast trains diverted to slow corridor (+15-20 min buffer).\n2. **Western Railway Jumbo Block:** Santacruz to Goregaon Fast lines (10:00 AM to 3:00 PM).\n3. **IMD Monsoon Advisory:** 4.48m high tide watch; pump deployment active at Sion and Kurla.\n\nWould you like alternative Metro corridors or bypass routes?`,
+      reply: `Namaste! I am your **Route Sense Mumbai Assistant**.\n\nI specialize in the Mumbai Metropolitan Region (MMR) transit network:\n- **Suburban Railway:** Western, Central, and Harbour line timetables & fares\n- **Mumbai Metro:** Line 1 (Versova-Ghatkopar), Lines 2A & 7, Line 3 Aqua underground\n- **BEST Buses:** AC & Ordinary route connections and ₹50 daily passes\n- **Autos & Cabs:** Regulated meter tariffs & estimated fares\n- **Real-Time Advisories:** Active Sunday mega-blocks and monsoon rainfall updates\n\nHow can I help plan your journey today?`,
+      actions: [
+        { label: "Dadar ➔ CSMT", type: "PLAN_ROUTE", payload: { origin: "Dadar", destination: "CSMT" } },
+        { label: "Check Mega Blocks", type: "CHECK_DISRUPTIONS" },
+        { label: "Cheapest Passes", type: "FILTER_CHEAPEST" }
+      ]
+    };
+  }
+
+  // 2. Dynamic Route Planning for ANY Corridor
+  const parsed = parseOriginDestination(userPrompt);
+  if (parsed && parsed.origin.length >= 3 && parsed.dest.length >= 3) {
+    const o = parsed.origin;
+    const d = parsed.dest;
+    const isWesternLine = /(borivali|andheri|bandra|goregaon|malad|kandivali|churchgate|dadar)/i.test(o) &&
+                          /(borivali|andheri|bandra|goregaon|malad|kandivali|churchgate|dadar)/i.test(d);
+
+    return {
+      reply: `**Journey Analysis: ${o} ➔ ${d}**\n\n` +
+        `1. **Fastest Route (Suburban Local / Metro):**\n` +
+        `   - Take the ${isWesternLine ? "Western Line Fast Local" : "Central Line Fast Local"} or connecting Metro line.\n` +
+        `   - Estimated time: **30–50 mins** (depending on fast/slow local).\n` +
+        `   - Ticket fare: **₹5 to ₹15** (II Class) | **₹50 to ₹105** (I Class / AC Local).\n\n` +
+        `2. **Cheapest Route (BEST Bus / Ordinary Local):**\n` +
+        `   - Direct Ordinary Local train or connecting BEST Bus.\n` +
+        `   - Total cost: **₹5–₹10** (Save up to 85% vs cab).\n\n` +
+        `3. **Most Comfortable (AC Local / Metro / Cab):**\n` +
+        `   - AC Local train or Kaali-Peeli Taxi via Western/Eastern Express Highway.\n` +
+        `   - Taxi estimate: ~**₹220–₹550** depending on peak traffic.`,
+      actions: [
+        { label: `Plan ${o} ➔ ${d}`, type: "PLAN_ROUTE", payload: { origin: o, destination: d } },
+        { label: "Compare Mode Fares", type: "FILTER_CHEAPEST" },
+        { label: "Check Active Disruptions", type: "CHECK_DISRUPTIONS" }
+      ]
+    };
+  }
+
+  // 3. Railway Mega Blocks & Disruptions
+  if (p.includes("mega block") || p.includes("block") || p.includes("disruption") || p.includes("delay") || p.includes("sunday")) {
+    return {
+      reply: `**Active Mumbai MMR Service Advisories:**\n\n` +
+        `1. **Central Railway Sunday Mega Block:**\n` +
+        `   - **Sector:** Matunga to Mulund (Up & Down Fast lines)\n` +
+        `   - **Timing:** 11:05 AM to 3:55 PM\n` +
+        `   - **Impact:** Fast locals diverted to Slow lines; expect 15–20 min buffer.\n\n` +
+        `2. **Western Railway Jumbo Block:**\n` +
+        `   - **Sector:** Santacruz to Goregaon (Fast lines)\n` +
+        `   - **Timing:** 10:00 AM to 3:00 PM\n\n` +
+        `3. **IMD Monsoon Advisory:**\n` +
+        `   - 4.48m high tide watch; pump deployment operational at Sion and Kurla low-lying railway culverts.`,
       actions: [
         { label: "View Disruption Feed", type: "CHECK_DISRUPTIONS" },
         { label: "Open Commute Dashboard", type: "OPEN_DASHBOARD" }
@@ -115,63 +190,66 @@ function getSmartFallbackReply(userPrompt: string): { reply: string; actions?: a
     };
   }
 
-  if (p.includes("cheapest") || p.includes("budget") || p.includes("fare") || p.includes("cost")) {
+  // 4. Fares, Passes & Budget
+  if (p.includes("cheapest") || p.includes("budget") || p.includes("fare") || p.includes("cost") || p.includes("pass") || p.includes("ticket")) {
     return {
-      reply: `For the lowest fare across Mumbai MMR:\n\n- **Mumbai Suburban Local Train (Second Class):** ₹5 to ₹15 for most inter-suburb journeys (e.g. Churchgate to Borivali is ₹10; Dadar to Thane is ₹10).\n- **BEST Ordinary Bus:** ₹5 for the first 5 km, ₹10 up to 10 km. A ₹50 daily bus pass provides unlimited non-AC rides across Mumbai.\n\nIn comparison, an auto-rickshaw costs ₹15.33/km after the ₹23 base fare, and cabs cost ₹18.66/km after the ₹28 base fare.`,
+      reply: `**Mumbai MMR Fare & Commute Budget Guide:**\n\n` +
+        `- **Suburban Railway (Second Class):** ₹5 for up to 10 km, ₹10 up to 35 km, ₹15 up to 60 km, ₹20 max.\n` +
+        `- **Suburban Railway (First Class):** ₹50 to ₹140. AC Local: ₹35 to ₹115.\n` +
+        `- **BEST Buses:**\n` +
+        `  - Non-AC: ₹5 min (first 5 km), ₹10 up to 10 km.\n` +
+        `  - AC: ₹6 min (first 5 km), ₹13 up to 10 km.\n` +
+        `  - **Unlimited Daily Pass:** ₹50 (non-AC) / ₹60 (AC) for unlimited 24-hr travel across MMR.\n` +
+        `- **Auto-rickshaws (Suburbs only):** ₹23 base meter (first 1.5 km), then ₹15.33 per km.\n` +
+        `- **Kaali-Peeli Taxis:** ₹28 base meter (first 1.5 km), then ₹18.66 per km.`,
       actions: [
         { label: "Filter Cheapest Journeys", type: "FILTER_CHEAPEST" },
+        { label: "My Commute Dashboard", type: "OPEN_DASHBOARD" }
+      ]
+    };
+  }
+
+  // 5. Metro Lines
+  if (p.includes("metro") || p.includes("line 1") || p.includes("line 2") || p.includes("line 3") || p.includes("line 7")) {
+    return {
+      reply: `**Mumbai Metro Network Overview:**\n\n` +
+        `- **Line 1 (Blue Line — Versova ➔ Andheri ➔ Ghatkopar):** 11.4 km elevated, 21 minutes end-to-end, fare ₹10–₹40. Connects Western & Central Railway.\n` +
+        `- **Line 2A & 7 (Yellow & Red Lines — Dahisar ➔ Andheri West / Gundavali):** 35 km elevated along Link Road & WEH, fare ₹10–₹50.\n` +
+        `- **Line 3 (Aqua Line — BKC ➔ SEEPZ / Aarey):** Underground corridor connecting Bandra Kurla Complex with Western Suburbs.`,
+      actions: [
+        { label: "Plan Andheri to Ghatkopar", type: "PLAN_ROUTE", payload: { origin: "Andheri", destination: "Ghatkopar", mode: "METRO" } },
+        { label: "Check Mega Blocks", type: "CHECK_DISRUPTIONS" }
+      ]
+    };
+  }
+
+  // 6. Monsoon & Waterlogging
+  if (p.includes("rain") || p.includes("monsoon") || p.includes("waterlog") || p.includes("flood") || p.includes("weather")) {
+    return {
+      reply: `**Monsoon & Flood Travel Intelligence:**\n\n` +
+        `- **High-Risk Waterlogging Spots:** Sion Railway tracks, Kurla Station subway, Gandhi Market (King's Circle), Hindmata Dadar, Milan Subway (Santacruz).\n` +
+        `- **Heavy Rain Commuter Strategy:**\n` +
+        `  1. Switch to elevated Metro lines (Line 1, 2A, 7) which run unaffected by surface track waterlogging.\n` +
+        `  2. Check IMD high-tide timings: High tides above 4.5m coinciding with >50mm rain cause temporary railway slow-downs.\n` +
+        `  3. Use Central Harbour line via Chembur/Tilak Nagar as bypass when Main Line is congested.`,
+      actions: [
+        { label: "View Live Disruptions", type: "CHECK_DISRUPTIONS" },
         { label: "Plan Journey", type: "PLAN_ROUTE" }
       ]
     };
   }
 
-  if (p.includes("dadar") && p.includes("csmt")) {
-    return {
-      reply: `**Dadar ➔ CSMT Options:**\n\n1. **Fastest & Cheapest:** Central Line Fast Train (12 mins, ₹5 II Class / ₹50 I Class). Direct departure from Dadar Platform 6.\n2. **Comfortable AC:** AC Local Train or Metro Line 3 connection.\n3. **Road Taxi (Kaali Peeli):** ~25-35 mins depending on Dr. Ambedkar Road traffic, ~₹140-₹170.`,
-      actions: [
-        { label: "Plan Dadar to CSMT", type: "PLAN_ROUTE", payload: { origin: "Dadar", destination: "CSMT", mode: "TRAIN" } }
-      ]
-    };
-  }
-
-  if (p.includes("churchgate") && p.includes("borivali")) {
-    return {
-      reply: `**Churchgate ➔ Borivali Options:**\n\n1. **Western Line Fast Local:** ~50-55 mins, ₹10 II Class. Stops at Mumbai Central, Dadar, Bandra, Andheri, Borivali.\n2. **AC Local:** ₹85, air-conditioned and comfortable.\n3. **Cab/Taxi:** ~70-95 mins via Western Express Highway & Coastal Road, ~₹550-₹700.`,
-      actions: [
-        { label: "Plan Churchgate to Borivali", type: "PLAN_ROUTE", payload: { origin: "Churchgate", destination: "Borivali", mode: "TRAIN" } }
-      ]
-    };
-  }
-
-  if (p.includes("andheri") && p.includes("ghatkopar")) {
-    return {
-      reply: `**Andheri ➔ Ghatkopar Recommendation:**\n\n- **Mumbai Metro Line 1 (Blue Line):** Best choice! Takes exactly **21 minutes** avoiding the heavy traffic on SCLR / Andheri-Kurla Road. Fare is **₹30**.\n- Local train alternative requires interchange at Dadar (Central & Western), taking ~50 mins.`,
-      actions: [
-        { label: "Plan Andheri to Ghatkopar", type: "PLAN_ROUTE", payload: { origin: "Andheri", destination: "Ghatkopar", mode: "METRO" } }
-      ]
-    };
-  }
-
-  if (p.includes("bkc") || p.includes("bandra kurla")) {
-    return {
-      reply: `**Reaching BKC (Bandra Kurla Complex):**\n\n- **From Bandra Station (East):** BEST Bus routes 310, 311, or AC bus route BKC-1 (₹6 AC fare, 12 mins). Auto-rickshaw shared or meter (~₹35-₹45).\n- **From Kurla Station (West):** BEST Bus routes 318, 320 to BKC Diamond Market (~15 mins, ₹6).\n- **Metro Line 3 (Aqua Line):** Direct connectivity to BKC Underground Station connecting to SEEPZ, Aarey, and South Mumbai.`,
-      actions: [
-        { label: "Plan Bandra to BKC", type: "PLAN_ROUTE", payload: { origin: "Bandra", destination: "Bandra Kurla Complex" } }
-      ]
-    };
-  }
-
-  if (p.includes("thane") && (p.includes("dadar") || p.includes("csmt") || p.includes("lower parel"))) {
-    return {
-      reply: `**Thane ➔ South/Central Mumbai Commute:**\n\n1. **Central Line Fast Local:** Thane to Dadar (32 mins, ₹10 II Class / ₹75 AC Local) or to CSMT (50 mins, ₹15 II Class / ₹105 AC Local).\n2. **To Lower Parel:** Take Central Fast to Dadar, walk over footbridge to Western Line Parel/Prabhadevi (or direct slow local to Currey Road).\n3. **Road / Cab:** ~60-90 mins via Eastern Express Highway & Eastern Freeway (~₹550-₹750).`,
-      actions: [
-        { label: "Plan Thane to Dadar", type: "PLAN_ROUTE", payload: { origin: "Thane", destination: "Dadar", mode: "TRAIN" } }
-      ]
-    };
-  }
-
+  // 7. General Fallback with Actionable Prompts
   return {
-    reply: `I can help you navigate Mumbai's transit network with real-time accuracy:\n\n- Compare **Local Trains vs Metro vs BEST Buses vs Autos/Cabs**\n- Calculate official **regulated MMR fares & monthly commute budgets**\n- Check today's **Central/Western Railway mega-blocks & IMD monsoon alerts**\n- Find the fastest or most comfortable route with minimal walking\n\nWhat journey would you like to plan?`,
+    reply: `I can help you navigate Mumbai's transit network with real-time accuracy:\n\n` +
+      `- Compare **Local Trains vs Metro vs BEST Buses vs Autos/Cabs**\n` +
+      `- Calculate official **regulated MMR fares & monthly commute budgets**\n` +
+      `- Check today's **Central/Western Railway mega-blocks & IMD monsoon alerts**\n` +
+      `- Find the fastest or most comfortable route with minimal walking\n\n` +
+      `Try asking:\n` +
+      `• *"How to go from Thane to Churchgate?"*\n` +
+      `• *"What is the cheapest way to travel from Dadar to BKC?"*\n` +
+      `• *"Are there any mega blocks today?"*`,
     actions: [
       { label: "Plan Dadar ➔ CSMT", type: "PLAN_ROUTE", payload: { origin: "Dadar", destination: "CSMT" } },
       { label: "Check Mega Blocks", type: "CHECK_DISRUPTIONS" },
@@ -199,9 +277,8 @@ export async function POST(request: NextRequest) {
     }
 
     // 1. Primary AI Provider: OpenAI GPT-4o-mini
-    const openAiReply = await callOpenAI(messages, userPrompt);
-    if (openAiReply) {
-      // Build smart contextual action chips based on prompt
+    const openAiResult = await callOpenAI(messages, userPrompt);
+    if (openAiResult.reply) {
       const actions: any[] = [];
       const lower = userPrompt.toLowerCase();
       if (lower.includes("dadar") && lower.includes("csmt")) {
@@ -217,18 +294,32 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({
         success: true,
         provider: "OpenAI GPT-4o-mini",
-        reply: openAiReply,
+        reply: openAiResult.reply,
         actions
       });
     }
 
-    // 2. Intelligent Mumbai Transit Engine Fallback (when OpenAI quota is pending or offline)
+    // 2. Intelligent Mumbai Transit Engine Fallback
     const fallback = getSmartFallbackReply(userPrompt);
+    let replyText = fallback.reply;
+
+    // If user explicitly asked about OpenAI or why it's not using OpenAI
+    const asksAboutAi = /openai|api\s*key|gpt|why\s+not\s+working|error/i.test(userPrompt);
+    if (asksAboutAi && openAiResult.isQuotaExhausted) {
+      replyText = `ℹ️ **OpenAI API Status Notice:**\n` +
+        `Your OpenAI API key was verified and accepted by OpenAI's authentication servers. However, OpenAI returned: **"credit_balance_exhausted (You have no credits remaining)"**.\n\n` +
+        `To enable direct GPT-4o-mini AI generations, top up pre-paid credits ($5 minimum) at:\n` +
+        `👉 https://platform.openai.com/settings/organization/billing/\n\n` +
+        `In the meantime, the **Route Sense Mumbai Transit Engine** is fully operational and answering your questions with real timetables, regulated tariffs, and route intelligence below:\n\n` +
+        replyText;
+    }
+
     return NextResponse.json({
       success: true,
-      provider: "OpenAI & Route Sense Intelligence",
-      reply: fallback.reply,
-      actions: fallback.actions || []
+      provider: openAiResult.isQuotaExhausted ? "Route Sense Intelligence (OpenAI Quota Pending)" : "Route Sense Mumbai Intelligence",
+      reply: replyText,
+      actions: fallback.actions || [],
+      quotaExhausted: openAiResult.isQuotaExhausted
     });
   } catch (error: any) {
     return NextResponse.json(
