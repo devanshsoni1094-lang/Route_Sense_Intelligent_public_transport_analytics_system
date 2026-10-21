@@ -168,7 +168,7 @@ export const InteractiveMap: React.FC<InteractiveMapProps> = ({
   // Construct Authenticated CARTO Basemap URL
   const getTileUrl = (style: "dark" | "voyager" | "positron") => {
     const key = activeCartoKey || DEFAULT_CARTO_KEY;
-    const keyParam = `?api_key=${key}`;
+    const keyParam = `?key=${key}`;
     switch (style) {
       case "dark":
         return `https://{s}.basemaps.cartocdn.com/rastertiles/dark_all/{z}/{x}/{y}.png${keyParam}`;
