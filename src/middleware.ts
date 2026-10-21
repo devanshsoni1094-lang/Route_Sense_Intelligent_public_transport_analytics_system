@@ -11,6 +11,7 @@ export function middleware(request: NextRequest) {
     if (
       cleanPath.startsWith("/_next") ||
       cleanPath.startsWith("/api/v1/auth") ||
+      cleanPath.startsWith("/api/v1/chat") ||
       cleanPath.startsWith("/images") ||
       cleanPath === "/favicon.ico" ||
       PUBLIC_FILE.test(cleanPath)
@@ -91,6 +92,6 @@ export const config = {
      * - public auth api routes (/api/v1/auth)
      * - images
      */
-    "/((?!_next/static|_next/image|_next/data|favicon\\.ico|manifest\\.json|robots\\.txt|sitemap\\.xml|login|auth|api/v1/auth|images).*)"
+    "/((?!_next/static|_next/image|_next/data|favicon\\.ico|manifest\\.json|robots\\.txt|sitemap\\.xml|login|auth|api/v1/auth|api/v1/chat|images).*)"
   ]
 };

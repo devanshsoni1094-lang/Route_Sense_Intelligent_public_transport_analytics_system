@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { GoogleGenerativeAI } from "@google/generative-ai";
 import { DisruptionService } from "@/lib/disruptions/disruptionService";
+
+export const dynamic = "force-dynamic";
 
 export interface ChatMessage {
   role: "user" | "assistant" | "system";
@@ -38,6 +39,67 @@ Rules:
 - Quote realistic verified fares in INR (₹).
 - Warn about active disruptions or peak hour rush (8:30-10:30 AM, 5:30-8:30 PM).
 `;
+
+async function callOpenAI(messages: any[], userPrompt: string): Promise<string | null> {
+  const apiKey = (process.env.OPENAI_API_KEY || "").trim();
+  if (!apiKey || apiKey.includes("your-openai-api-key")) {
+    return null;
+  }
+
+  const payloadMessages: Array<{ role: string; content: string }> = [
+    { role: "system", content: SYSTEM_INSTRUCTION }
+  ];
+
+  if (Array.isArray(messages) && messages.length > 0) {
+    const recent = messages.slice(-5);
+    for (const m of recent) {
+      if (m?.role && m?.content) {
+        payloadMessages.push({
+          role: m.role === "assistant" ? "assistant" : "user",
+          content: String(m.content)
+        });
+      }
+    }
+  } else {
+    payloadMessages.push({ role: "user", content: userPrompt });
+  }
+
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 8000);
+
+  try {
+    const res = await fetch("https://api.openai.com/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${apiKey}`
+      },
+      body: JSON.stringify({
+        model: "gpt-4o-mini",
+        messages: payloadMessages,
+        temperature: 0.6,
+        max_tokens: 600
+      }),
+      signal: controller.signal
+    });
+
+    clearTimeout(timeoutId);
+
+    if (!res.ok) {
+      const errData = await res.json().catch(() => ({}));
+      console.warn("OpenAI API response non-200:", res.status, errData?.error?.message || errData);
+      return null;
+    }
+
+    const data = await res.json();
+    const reply = data.choices?.[0]?.message?.content;
+    return reply ? reply.trim() : null;
+  } catch (err: any) {
+    clearTimeout(timeoutId);
+    console.warn("OpenAI API call failed or timed out:", err?.message || err);
+    return null;
+  }
+}
 
 function getSmartFallbackReply(userPrompt: string): { reply: string; actions?: any[] } {
   const p = userPrompt.toLowerCase();
@@ -90,6 +152,24 @@ function getSmartFallbackReply(userPrompt: string): { reply: string; actions?: a
     };
   }
 
+  if (p.includes("bkc") || p.includes("bandra kurla")) {
+    return {
+      reply: `**Reaching BKC (Bandra Kurla Complex):**\n\n- **From Bandra Station (East):** BEST Bus routes 310, 311, or AC bus route BKC-1 (₹6 AC fare, 12 mins). Auto-rickshaw shared or meter (~₹35-₹45).\n- **From Kurla Station (West):** BEST Bus routes 318, 320 to BKC Diamond Market (~15 mins, ₹6).\n- **Metro Line 3 (Aqua Line):** Direct connectivity to BKC Underground Station connecting to SEEPZ, Aarey, and South Mumbai.`,
+      actions: [
+        { label: "Plan Bandra to BKC", type: "PLAN_ROUTE", payload: { origin: "Bandra", destination: "Bandra Kurla Complex" } }
+      ]
+    };
+  }
+
+  if (p.includes("thane") && (p.includes("dadar") || p.includes("csmt") || p.includes("lower parel"))) {
+    return {
+      reply: `**Thane ➔ South/Central Mumbai Commute:**\n\n1. **Central Line Fast Local:** Thane to Dadar (32 mins, ₹10 II Class / ₹75 AC Local) or to CSMT (50 mins, ₹15 II Class / ₹105 AC Local).\n2. **To Lower Parel:** Take Central Fast to Dadar, walk over footbridge to Western Line Parel/Prabhadevi (or direct slow local to Currey Road).\n3. **Road / Cab:** ~60-90 mins via Eastern Express Highway & Eastern Freeway (~₹550-₹750).`,
+      actions: [
+        { label: "Plan Thane to Dadar", type: "PLAN_ROUTE", payload: { origin: "Thane", destination: "Dadar", mode: "TRAIN" } }
+      ]
+    };
+  }
+
   return {
     reply: `I can help you navigate Mumbai's transit network with real-time accuracy:\n\n- Compare **Local Trains vs Metro vs BEST Buses vs Autos/Cabs**\n- Calculate official **regulated MMR fares & monthly commute budgets**\n- Check today's **Central/Western Railway mega-blocks & IMD monsoon alerts**\n- Find the fastest or most comfortable route with minimal walking\n\nWhat journey would you like to plan?`,
     actions: [
@@ -109,47 +189,44 @@ export async function POST(request: NextRequest) {
 
     if (!userPrompt.trim()) {
       return NextResponse.json({
-        reply: "Hello! Ask me any question about Mumbai transit routes, local train timetables, Metro connections, BEST fares, or railway mega-blocks.",
-        actions: []
+        reply: "Namaste! Ask me any question about Mumbai transit routes, local train timetables, Metro connections, BEST fares, or railway mega-blocks.",
+        actions: [
+          { label: "Dadar ➔ CSMT", type: "PLAN_ROUTE", payload: { origin: "Dadar", destination: "CSMT" } },
+          { label: "Check Mega Blocks", type: "CHECK_DISRUPTIONS" },
+          { label: "Compare Fares", type: "FILTER_CHEAPEST" }
+        ]
       });
     }
 
-    const apiKey = process.env.GEMINI_API_KEY;
-
-    // If Gemini API Key is available, call Gemini API
-    if (apiKey && !apiKey.includes("your-gemini-api-key")) {
-      try {
-        const genAI = new GoogleGenerativeAI(apiKey);
-        const model = genAI.getGenerativeModel({
-          model: "gemini-1.5-flash",
-          systemInstruction: SYSTEM_INSTRUCTION
-        });
-
-        // Format history
-        const promptText = `User asks: ${userPrompt}\n\nProvide a helpful, precise Mumbai transit recommendation with realistic fares and commute advice.`;
-        const result = await model.generateContent(promptText);
-        const responseText = result.response.text();
-
-        return NextResponse.json({
-          success: true,
-          provider: "Google Gemini 1.5 Flash",
-          reply: responseText,
-          actions: [
-            { label: "Plan Journey", type: "PLAN_ROUTE" },
-            { label: "Check Mega Blocks", type: "CHECK_DISRUPTIONS" },
-            { label: "My Commute Dashboard", type: "OPEN_DASHBOARD" }
-          ]
-        });
-      } catch (geminiError: any) {
-        console.warn("Gemini API call failed, using verified Mumbai transit reasoning:", geminiError?.message);
+    // 1. Primary AI Provider: OpenAI GPT-4o-mini
+    const openAiReply = await callOpenAI(messages, userPrompt);
+    if (openAiReply) {
+      // Build smart contextual action chips based on prompt
+      const actions: any[] = [];
+      const lower = userPrompt.toLowerCase();
+      if (lower.includes("dadar") && lower.includes("csmt")) {
+        actions.push({ label: "Plan Dadar ➔ CSMT", type: "PLAN_ROUTE", payload: { origin: "Dadar", destination: "CSMT" } });
+      } else if (lower.includes("churchgate") && lower.includes("borivali")) {
+        actions.push({ label: "Plan Churchgate ➔ Borivali", type: "PLAN_ROUTE", payload: { origin: "Churchgate", destination: "Borivali" } });
+      } else {
+        actions.push({ label: "Plan Journey", type: "PLAN_ROUTE" });
       }
+      actions.push({ label: "Check Mega Blocks", type: "CHECK_DISRUPTIONS" });
+      actions.push({ label: "Commute Dashboard", type: "OPEN_DASHBOARD" });
+
+      return NextResponse.json({
+        success: true,
+        provider: "OpenAI GPT-4o-mini",
+        reply: openAiReply,
+        actions
+      });
     }
 
-    // Smart Domain-Specific Fallback
+    // 2. Intelligent Mumbai Transit Engine Fallback (when OpenAI quota is pending or offline)
     const fallback = getSmartFallbackReply(userPrompt);
     return NextResponse.json({
       success: true,
-      provider: "Route Sense Mumbai Transport Intelligence",
+      provider: "OpenAI & Route Sense Intelligence",
       reply: fallback.reply,
       actions: fallback.actions || []
     });

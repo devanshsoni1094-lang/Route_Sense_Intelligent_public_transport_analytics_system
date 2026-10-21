@@ -43,6 +43,7 @@ export const RouteSenseAssistantChat: React.FC = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
+  const [activeProvider, setActiveProvider] = useState<string>("OpenAI GPT-4o-mini");
   const [messages, setMessages] = useState<ChatMessage[]>([
     {
       id: "msg_welcome",
@@ -92,6 +93,9 @@ export const RouteSenseAssistantChat: React.FC = () => {
       });
 
       const data = await res.json();
+      if (data?.provider) {
+        setActiveProvider(data.provider);
+      }
       const assistantMsg: ChatMessage = {
         id: `ast_${Date.now()}`,
         role: "assistant",
@@ -170,7 +174,7 @@ export const RouteSenseAssistantChat: React.FC = () => {
                   <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
                 </h4>
                 <p className="text-[10px] text-stone-400 font-mono">
-                  Gemini &bull; Mumbai Transit Intelligence
+                  {activeProvider} &bull; Mumbai Transit
                 </p>
               </div>
             </div>
