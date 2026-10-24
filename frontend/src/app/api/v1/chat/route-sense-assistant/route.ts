@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { GoogleGenerativeAI } from "@google/generative-ai";
 import { DisruptionService } from "@/lib/disruptions/disruptionService";
 
 export const dynamic = "force-dynamic";
@@ -110,6 +111,29 @@ async function callOpenAI(messages: any[], userPrompt: string): Promise<OpenAiRe
     clearTimeout(timeoutId);
     console.warn("OpenAI API call failed or timed out:", err?.message || err);
     return { reply: null, error: err?.message || "TIMEOUT" };
+  }
+}
+
+async function callGemini(messages: any[], userPrompt: string): Promise<string | null> {
+  const geminiKey = (process.env.GEMINI_API_KEY || "").trim();
+  if (!geminiKey || geminiKey.includes("your-gemini-api-key")) {
+    return null;
+  }
+
+  try {
+    const genAI = new GoogleGenerativeAI(geminiKey);
+    const model = genAI.getGenerativeModel({
+      model: "gemini-1.5-flash",
+      systemInstruction: SYSTEM_INSTRUCTION
+    });
+
+    const promptText = `User asks: ${userPrompt}\n\nProvide a precise, courteous Mumbai transit recommendation with realistic fares and commute advice.`;
+    const result = await model.generateContent(promptText);
+    const responseText = result?.response?.text();
+    return responseText ? responseText.trim() : null;
+  } catch (err: any) {
+    console.warn("Gemini API call failed:", err?.message || err);
+    return null;
   }
 }
 
@@ -299,7 +323,30 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    // 2. Intelligent Mumbai Transit Engine Fallback
+    // 2. Alternative AI Provider: Google Gemini 1.5 Flash
+    const geminiReply = await callGemini(messages, userPrompt);
+    if (geminiReply) {
+      const actions: any[] = [];
+      const lower = userPrompt.toLowerCase();
+      if (lower.includes("dadar") && lower.includes("csmt")) {
+        actions.push({ label: "Plan Dadar ➔ CSMT", type: "PLAN_ROUTE", payload: { origin: "Dadar", destination: "CSMT" } });
+      } else if (lower.includes("churchgate") && lower.includes("borivali")) {
+        actions.push({ label: "Plan Churchgate ➔ Borivali", type: "PLAN_ROUTE", payload: { origin: "Churchgate", destination: "Borivali" } });
+      } else {
+        actions.push({ label: "Plan Journey", type: "PLAN_ROUTE" });
+      }
+      actions.push({ label: "Check Mega Blocks", type: "CHECK_DISRUPTIONS" });
+      actions.push({ label: "Commute Dashboard", type: "OPEN_DASHBOARD" });
+
+      return NextResponse.json({
+        success: true,
+        provider: "Google Gemini 1.5 Flash",
+        reply: geminiReply,
+        actions
+      });
+    }
+
+    // 3. Intelligent Mumbai Transit Engine Fallback
     const fallback = getSmartFallbackReply(userPrompt);
     let replyText = fallback.reply;
 
