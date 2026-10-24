@@ -47,6 +47,13 @@ interface OpenAiResult {
   isQuotaExhausted?: boolean;
 }
 
+interface GeminiResult {
+  reply: string | null;
+  model?: string;
+  error?: string;
+  isAccessDenied?: boolean;
+}
+
 async function callOpenAI(messages: any[], userPrompt: string): Promise<OpenAiResult> {
   const apiKey = (process.env.OPENAI_API_KEY || "").trim();
   if (!apiKey || apiKey.includes("your-openai-api-key")) {
@@ -114,27 +121,39 @@ async function callOpenAI(messages: any[], userPrompt: string): Promise<OpenAiRe
   }
 }
 
-async function callGemini(messages: any[], userPrompt: string): Promise<string | null> {
+async function callGemini(messages: any[], userPrompt: string): Promise<GeminiResult> {
   const geminiKey = (process.env.GEMINI_API_KEY || "").trim();
   if (!geminiKey || geminiKey.includes("your-gemini-api-key")) {
-    return null;
+    return { reply: null, error: "API_KEY_NOT_CONFIGURED" };
   }
 
-  try {
-    const genAI = new GoogleGenerativeAI(geminiKey);
-    const model = genAI.getGenerativeModel({
-      model: "gemini-1.5-flash",
-      systemInstruction: SYSTEM_INSTRUCTION
-    });
+  const promptText = `User asks: ${userPrompt}\n\nProvide a precise, courteous Mumbai transit recommendation with realistic fares and commute advice.`;
+  const candidateModels = ["gemini-1.5-flash", "gemini-2.5-flash", "gemini-flash-latest", "gemini-3.8-flash"];
 
-    const promptText = `User asks: ${userPrompt}\n\nProvide a precise, courteous Mumbai transit recommendation with realistic fares and commute advice.`;
-    const result = await model.generateContent(promptText);
-    const responseText = result?.response?.text();
-    return responseText ? responseText.trim() : null;
-  } catch (err: any) {
-    console.warn("Gemini API call failed:", err?.message || err);
-    return null;
+  for (const modelName of candidateModels) {
+    try {
+      const genAI = new GoogleGenerativeAI(geminiKey);
+      const model = genAI.getGenerativeModel({
+        model: modelName,
+        systemInstruction: SYSTEM_INSTRUCTION
+      });
+
+      const result = await model.generateContent(promptText);
+      const responseText = result?.response?.text();
+      if (responseText && responseText.trim()) {
+        return { reply: responseText.trim(), model: modelName };
+      }
+    } catch (err: any) {
+      const msg = err?.message || String(err);
+      const isDenied = msg.includes("denied access") || msg.includes("PERMISSION_DENIED") || msg.includes("403");
+      console.warn(`Gemini API call on ${modelName} returned:`, msg);
+      if (isDenied) {
+        return { reply: null, error: msg, isAccessDenied: true };
+      }
+    }
   }
+
+  return { reply: null, error: "ALL_MODELS_FAILED" };
 }
 
 function parseOriginDestination(text: string): { origin: string; dest: string } | null {
@@ -149,6 +168,21 @@ function parseOriginDestination(text: string): { origin: string; dest: string } 
   if (m2) return { origin: m2[1].trim(), dest: m2[2].replace(/\?/g, "").trim() };
 
   return null;
+}
+
+function buildContextualActions(userPrompt: string): any[] {
+  const actions: any[] = [];
+  const lower = userPrompt.toLowerCase();
+  if (lower.includes("dadar") && lower.includes("csmt")) {
+    actions.push({ label: "Plan Dadar ➔ CSMT", type: "PLAN_ROUTE", payload: { origin: "Dadar", destination: "CSMT" } });
+  } else if (lower.includes("churchgate") && lower.includes("borivali")) {
+    actions.push({ label: "Plan Churchgate ➔ Borivali", type: "PLAN_ROUTE", payload: { origin: "Churchgate", destination: "Borivali" } });
+  } else {
+    actions.push({ label: "Plan Journey", type: "PLAN_ROUTE" });
+  }
+  actions.push({ label: "Check Mega Blocks", type: "CHECK_DISRUPTIONS" });
+  actions.push({ label: "Commute Dashboard", type: "OPEN_DASHBOARD" });
+  return actions;
 }
 
 function getSmartFallbackReply(userPrompt: string): { reply: string; actions?: any[] } {
@@ -300,21 +334,22 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    // 1. Primary AI Provider: OpenAI GPT-4o-mini
+    // 1. Primary AI Provider: Google Gemini
+    const geminiResult = await callGemini(messages, userPrompt);
+    if (geminiResult.reply) {
+      const actions = buildContextualActions(userPrompt);
+      return NextResponse.json({
+        success: true,
+        provider: `Google Gemini (${geminiResult.model || "1.5 Flash"})`,
+        reply: geminiResult.reply,
+        actions
+      });
+    }
+
+    // 2. Secondary AI Provider: OpenAI GPT-4o-mini
     const openAiResult = await callOpenAI(messages, userPrompt);
     if (openAiResult.reply) {
-      const actions: any[] = [];
-      const lower = userPrompt.toLowerCase();
-      if (lower.includes("dadar") && lower.includes("csmt")) {
-        actions.push({ label: "Plan Dadar ➔ CSMT", type: "PLAN_ROUTE", payload: { origin: "Dadar", destination: "CSMT" } });
-      } else if (lower.includes("churchgate") && lower.includes("borivali")) {
-        actions.push({ label: "Plan Churchgate ➔ Borivali", type: "PLAN_ROUTE", payload: { origin: "Churchgate", destination: "Borivali" } });
-      } else {
-        actions.push({ label: "Plan Journey", type: "PLAN_ROUTE" });
-      }
-      actions.push({ label: "Check Mega Blocks", type: "CHECK_DISRUPTIONS" });
-      actions.push({ label: "Commute Dashboard", type: "OPEN_DASHBOARD" });
-
+      const actions = buildContextualActions(userPrompt);
       return NextResponse.json({
         success: true,
         provider: "OpenAI GPT-4o-mini",
@@ -323,50 +358,34 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    // 2. Alternative AI Provider: Google Gemini 1.5 Flash
-    const geminiReply = await callGemini(messages, userPrompt);
-    if (geminiReply) {
-      const actions: any[] = [];
-      const lower = userPrompt.toLowerCase();
-      if (lower.includes("dadar") && lower.includes("csmt")) {
-        actions.push({ label: "Plan Dadar ➔ CSMT", type: "PLAN_ROUTE", payload: { origin: "Dadar", destination: "CSMT" } });
-      } else if (lower.includes("churchgate") && lower.includes("borivali")) {
-        actions.push({ label: "Plan Churchgate ➔ Borivali", type: "PLAN_ROUTE", payload: { origin: "Churchgate", destination: "Borivali" } });
-      } else {
-        actions.push({ label: "Plan Journey", type: "PLAN_ROUTE" });
-      }
-      actions.push({ label: "Check Mega Blocks", type: "CHECK_DISRUPTIONS" });
-      actions.push({ label: "Commute Dashboard", type: "OPEN_DASHBOARD" });
-
-      return NextResponse.json({
-        success: true,
-        provider: "Google Gemini 1.5 Flash",
-        reply: geminiReply,
-        actions
-      });
-    }
-
     // 3. Intelligent Mumbai Transit Engine Fallback
     const fallback = getSmartFallbackReply(userPrompt);
     let replyText = fallback.reply;
 
-    // If user explicitly asked about OpenAI or why it's not using OpenAI
-    const asksAboutAi = /openai|api\s*key|gpt|why\s+not\s+working|error/i.test(userPrompt);
-    if (asksAboutAi && openAiResult.isQuotaExhausted) {
-      replyText = `ℹ️ **OpenAI API Status Notice:**\n` +
-        `Your OpenAI API key was verified and accepted by OpenAI's authentication servers. However, OpenAI returned: **"credit_balance_exhausted (You have no credits remaining)"**.\n\n` +
-        `To enable direct GPT-4o-mini AI generations, top up pre-paid credits ($5 minimum) at:\n` +
-        `👉 https://platform.openai.com/settings/organization/billing/\n\n` +
-        `In the meantime, the **Route Sense Mumbai Transit Engine** is fully operational and answering your questions with real timetables, regulated tariffs, and route intelligence below:\n\n` +
+    const asksAboutAi = /gemini|openai|api\s*key|gpt|why\s+not\s+working|error/i.test(userPrompt);
+    if (asksAboutAi && (geminiResult.isAccessDenied || openAiResult.isQuotaExhausted)) {
+      replyText = `ℹ️ **AI Model Status Notice:**\n` +
+        (geminiResult.isAccessDenied
+          ? `• **Google Gemini:** Your Gemini API key was authenticated, but Google returned: *"403: Your project has been denied access"*. To resolve this in 30 seconds, create a new API key in a fresh project at https://aistudio.google.com/app/apikey (100% free with no credit card required).\n`
+          : "") +
+        (openAiResult.isQuotaExhausted
+          ? `• **OpenAI:** Verified, but has 0 remaining balance. Recharge credits at https://platform.openai.com/settings/organization/billing/.\n`
+          : "") +
+        `\nIn the meantime, the **Route Sense Mumbai Transit Engine** is fully operational and answering your questions with real timetables, regulated tariffs, and route intelligence below:\n\n` +
         replyText;
     }
 
     return NextResponse.json({
       success: true,
-      provider: openAiResult.isQuotaExhausted ? "Route Sense Intelligence (OpenAI Quota Pending)" : "Route Sense Mumbai Intelligence",
+      provider: geminiResult.isAccessDenied
+        ? "Route Sense Intelligence (Gemini Project Access Restricted)"
+        : openAiResult.isQuotaExhausted
+        ? "Route Sense Intelligence (OpenAI Quota Pending)"
+        : "Route Sense Mumbai Intelligence",
       reply: replyText,
       actions: fallback.actions || [],
-      quotaExhausted: openAiResult.isQuotaExhausted
+      geminiAccessDenied: geminiResult.isAccessDenied,
+      openAiQuotaExhausted: openAiResult.isQuotaExhausted
     });
   } catch (error: any) {
     return NextResponse.json(
