@@ -27,22 +27,23 @@ interface ChatMessage {
 }
 
 const STARTER_PROMPTS = [
-  "How can I get from Dadar to BKC fastest?",
-  "What is 17 multiplied by 23?",
-  "Explain how a neural network learns.",
-  "Are there any mega blocks today?",
-  "How can Route Sense help me plan a commute?"
+  "How can I get from Dadar to BKC fastest? ⚡",
+  "Where can I get the best vada pav in Mumbai? 🍽️",
+  "Tell me a fun Mumbai commuter joke! 😄",
+  "What is 17 multiplied by 23? 🧮",
+  "Explain how a neural network learns 🧠",
+  "Are there any mega blocks today? ⚠️"
 ];
 
 const INITIAL_WELCOME: ChatMessage = {
   id: "msg_welcome",
   role: "assistant",
   content:
-    "Namaste! I am your **Route Sense Assistant**.\n\nI can compare Mumbai suburban trains, metro lines, and BEST buses, calculate verified MMR fares, alert you to railway mega-blocks or monsoon disruptions, and answer general questions.\n\nHow can I help you today?",
+    "Namaste! 🙏 I'm your friendly **Route Sense Assistant**!\n\nI can help you navigate Mumbai with smart route comparisons, official MMR fares, and live mega-block alerts — or answer **any question** on your mind from math and tech to food recommendations, poetry, and jokes!\n\nWhat would you like to explore today? ✨",
   actions: [
-    { label: "Dadar ➔ CSMT", type: "PLAN_ROUTE", payload: { origin: "Dadar", destination: "CSMT" } },
-    { label: "Check Mega Blocks", type: "CHECK_DISRUPTIONS" },
-    { label: "Compare Mode Fares", type: "FILTER_CHEAPEST" }
+    { label: "Dadar ➔ CSMT 🚆", type: "PLAN_ROUTE", payload: { origin: "Dadar", destination: "CSMT" } },
+    { label: "Check Mega Blocks ⚠️", type: "CHECK_DISRUPTIONS" },
+    { label: "Compare Fares 💰", type: "FILTER_CHEAPEST" }
   ],
   timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
 };
