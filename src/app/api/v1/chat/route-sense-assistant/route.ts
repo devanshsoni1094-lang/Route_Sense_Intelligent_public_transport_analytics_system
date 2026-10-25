@@ -138,7 +138,9 @@ async function callGemini(messages: any[], userPrompt: string): Promise<GeminiRe
         msg.includes("denied access") ||
         msg.includes("PERMISSION_DENIED") ||
         msg.includes("403") ||
-        msg.includes("blocked")
+        msg.includes("blocked") ||
+        msg.includes("outstanding balance") ||
+        msg.includes("billing")
       ) {
         isAccessDenied = true;
       }
@@ -606,7 +608,11 @@ export async function POST(request: NextRequest) {
     let statusNotice = "";
 
     if (geminiResult.isAccessDenied) {
-      statusNotice += `• **Google Gemini:** Key authenticated, but Google Cloud returned: *"403: Your project has been denied access"*. To enable live Gemini generation, generate a key in a fresh project at https://aistudio.google.com/app/apikey (free, no credit card required).\n`;
+      if (geminiResult.error?.includes("outstanding balance") || geminiResult.error?.includes("billing")) {
+        statusNotice += `• **Google Gemini:** Google returned: *"Your billing account has an outstanding balance. Make a payment at https://aistudio.google.com/billing to restore service."* Or generate a free key on a project without billing at https://aistudio.google.com/app/apikey.\n`;
+      } else {
+        statusNotice += `• **Google Gemini:** Key authenticated, but Google Cloud returned: *"403: Your project has been denied access"*. To enable live Gemini generation, generate a key in a fresh project at https://aistudio.google.com/app/apikey (free, no credit card required).\n`;
+      }
     }
     if (openAiResult.isQuotaExhausted) {
       statusNotice += `• **OpenAI:** Key authenticated, but 0 balance remaining. Add credits at https://platform.openai.com/settings/organization/billing/.\n`;
